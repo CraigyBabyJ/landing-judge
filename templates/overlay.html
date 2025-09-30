@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <title>Landing Votes Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    /* Ensure transparent background for OBS */
+    html, body {
+      background: transparent !important;
+      width: 1080px;
+      height: 1920px;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay-root">
+    <!-- Animated number display -->
+    <div id="number-display" class="number-display hidden">
+      <div class="score-fraction">
+        <div class="vote-score" id="vote-score">10</div>
+        <div class="divider-line"></div>
+        <div class="max-score">10</div>
+      </div>
+      <!-- Quote display underneath the score -->
+      <div class="quote-display" id="quote-display"></div>
+    </div>
+    <!-- Hidden audio element for playing quotes -->
+    <audio id="quote-audio" preload="none"></audio>
+  </div>
+
+  <script>
+    window.BANNER_DURATION_MS = {{ banner_duration_ms | tojson }};
+  </script>
+  <script src="/static/overlay.js"></script>
+</body>
+</html>
