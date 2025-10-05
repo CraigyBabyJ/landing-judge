@@ -399,12 +399,12 @@ def ui_stylesheet() -> str:
 
 
 def generate_audio_url(text: str) -> str:
+    # Respect the user's toggle
     if not ENABLE_TTS:
         return ""
-    if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
-        return ""
     try:
-        # Resolve voice and engine for region
+        # Resolve voice and engine for region. Use AWS default credential chain if
+        # explicit env keys are not provided, so profiles/SSO still work.
         vid_raw = (POLLY_VOICE_ID or '').strip()
         if not vid_raw:
             return ""
@@ -485,6 +485,7 @@ def generate_audio_url(text: str) -> str:
             pass
         return f"/static/{audio_filename}"
     except Exception:
+        # If anything goes wrong (including missing credentials), return no audio
         return ""
 
 
@@ -1825,12 +1826,12 @@ class AllInOneUI(QMainWindow):
             close_btn.clicked.connect(dlg.accept)
         except Exception:
             pass
-            try:
-                # Turn on overlay preview (show 1/10; no quote)
-                self._post_preview(True, 1)
-                dlg.exec()
-            except Exception:
-                pass
+        # Show the dialog and toggle preview so the overlay is visible while adjusting
+        try:
+            self._post_preview(True, 1)
+            dlg.exec()
+        except Exception:
+            pass
         finally:
             # Turn preview off when dialog closes
             try:
@@ -1959,8 +1960,13 @@ class AllInOneUI(QMainWindow):
             pass
 
     def open_overlay(self):
-        import webbrowser
-        webbrowser.open(f"{self.base_url()}/overlay")
+        try:
+            from PySide6.QtCore import QUrl
+            from PySide6.QtGui import QDesktopServices
+            QDesktopServices.openUrl(QUrl(f"{self.base_url()}/overlay"))
+        except Exception:
+            import webbrowser
+            webbrowser.open(f"{self.base_url()}/overlay")
 
     def trigger_vote(self, score: int):
         url = f"{self.base_url()}/vote/{score}"

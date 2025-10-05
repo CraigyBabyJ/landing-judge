@@ -382,7 +382,9 @@
   }
   function showAnimatedNumber(score, level, durationMs, quote = '', audioUrl = '', effects = null) {
     // Fixed banner display duration for predictable pacing
-    const DEFAULT_MS = 1500;
+    const DEFAULT_MS = 2000;
+    // Additional hold after audio finishes
+    const AFTER_AUDIO_MS = 2000;
     function hideOverlay() {
       display.classList.remove('show');
       display.classList.add('hidden');
@@ -442,20 +444,30 @@
       quoteAudio.src = audioUrl;
       // Ensure the media element reloads the new source before playing
       try { quoteAudio.load(); } catch (e) {}
-      // Do not link banner visibility to audio end anymore
-      quoteAudio.onended = null;
+      // Hide 2 seconds after audio finishes
+      quoteAudio.onended = () => {
+        if (!previewActive) {
+          if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
+          displayTimer = setTimeout(() => { hideOverlay(); }, AFTER_AUDIO_MS);
+        }
+      };
       quoteAudio.play().catch(e => {
         console.log('Audio playback failed:', e);
         if (audioCtx && audioCtx.state === 'suspended') {
           audioCtx.resume().catch(() => {});
         }
+        // Fallback to fixed banner duration if audio didn't play
+        if (!previewActive) {
+          if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
+          displayTimer = setTimeout(() => { hideOverlay(); }, DEFAULT_MS);
+        }
       });
-    }
-    // Always use fixed banner duration
-    const ms = DEFAULT_MS;
-    if (!previewActive) {
-      if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
-      displayTimer = setTimeout(() => { hideOverlay(); }, ms);
+    } else {
+      // No audio: keep old behavior (fixed duration)
+      if (!previewActive) {
+        if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
+        displayTimer = setTimeout(() => { hideOverlay(); }, DEFAULT_MS);
+      }
     }
   }
 

@@ -30,6 +30,14 @@ An opinionated, local overlay and control app for rating landings from 1–10 wi
 
 Pro tip: The overlay is transparent until a vote or preview is triggered.
 
+## Environment Setup
+Copy the sample file and edit values as needed:
+
+```powershell
+Copy-Item .env.sample .env
+# then open .env and set AWS keys if you use TTS
+```
+
 ## Publish to GitHub
 Make the repo public and push it to GitHub as `landing-judge`.
 

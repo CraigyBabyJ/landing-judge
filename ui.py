@@ -13,7 +13,8 @@ from pathlib import Path
 
 import requests
 import boto3
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -335,7 +336,21 @@ class VotingUI(QMainWindow):
 
     def open_overlay(self):
         url = f"{self.base_url()}/overlay"
-        webbrowser.open(url)
+        try:
+            # Prefer OS handler via Qt; more reliable than webbrowser on Windows
+            opened = QDesktopServices.openUrl(QUrl(url))
+            if not opened:
+                # Fallback to Python's webbrowser
+                webbrowser.open(url)
+            try:
+                self.status_label.setText(f"Opened overlay: {url}")
+            except Exception:
+                pass
+        except Exception:
+            try:
+                self.status_label.setText("Could not open overlay. Copy URL into your browser: " + url)
+            except Exception:
+                pass
 
     def trigger_vote(self, score: int):
         url = f"{self.base_url()}/vote/{score}"
