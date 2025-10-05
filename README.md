@@ -1,191 +1,121 @@
-# 🛬 Landing Voting System
+# Landing Judge
 
-A real-time overlay system for rating aircraft landings with animated displays, sarcastic quotes, and text-to-speech feedback. Perfect for streaming or recording flight simulations.
+An opinionated, local overlay and control app for rating landings from 1–10 with a snappy on‑screen banner, a witty quote, and optional text‑to‑speech audio. Designed for streamers and coaches who want quick, punchy feedback in OBS or any broadcasting setup.
 
-## 📺 What It Does
+## Features
+- Animated overlay banner with tiered colors and subtle motion.
+- Witty quote per score, plus optional Amazon Polly TTS playback.
+- Fixed, client‑side banner visibility (defaults to 1500 ms) for predictable pacing.
+- One‑click Desktop UI for settings and testing votes.
+- Stream Deck integration for 10 fast vote buttons.
+- Simple API (`GET /vote/<score>`) for external triggers.
+- Editable quotes (`quotes.json`) with a safe default backup (`quotes.default.json`).
 
-This system creates a transparent overlay that displays animated landing scores (1-10) with:
-- **Animated score displays** with dynamic entrance effects
-- **Sarcastic quotes** based on landing quality
-- **Color-coded feedback** (red=bad, amber=ok, yellow=good, green=great)
-- **Audio playback** of quotes using AWS Polly text-to-speech
-- **Real-time updates** via Server-Sent Events (SSE)
-- **OBS-ready transparent overlay** (1080x1920 resolution)
+## Quick Start
+1. Install Python 3.10+.
+2. Install dependencies:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+3. Run the server:
+   ```powershell
+   python all_in_one.py
+   ```
+4. Open the overlay in a browser or OBS Browser Source:
+   - URL: `http://127.0.0.1:5005/overlay`
+5. Trigger a test vote (1–10):
+   ```powershell
+   curl "http://127.0.0.1:5005/vote/8"
+   ```
 
-## 🚀 Quick Start
+Pro tip: The overlay is transparent until a vote or preview is triggered.
 
-### Prerequisites
-- Python 3.7+
-- Flask
-- boto3 (for AWS Polly audio)
-- python-dotenv
+## Publish to GitHub
+Make the repo public and push it to GitHub as `landing-judge`.
 
-### Installation
-1. Install dependencies:
-```bash
-pip install flask boto3 python-dotenv
-```
+1. Create a new public repo on GitHub named `landing-judge`.
+2. In the project folder, initialize and commit locally:
+   ```powershell
+   git init
+   git add .
+   git commit -m "Public release: Landing Judge"
+   ```
+3. Add the remote and push:
+   ```powershell
+   git branch -M main
+   git remote add origin https://github.com/<your-username>/landing-judge.git
+   git push -u origin main
+   ```
+4. Update your Stream Deck profile and OBS scene names to match “Landing Judge” if desired.
 
-2. Run the server:
-```bash
-python app.py
-```
+## Desktop UI
+The optional control panel lets you edit `.env` settings, open the overlay, and trigger votes.
 
-3. Open the overlay in your browser:
-```
-http://127.0.0.1:5005/overlay
-```
-
-### Testing the System
-Trigger a vote to see the animated overlay:
-```bash
-# Windows PowerShell
-Invoke-WebRequest -Uri "http://127.0.0.1:5005/vote/7"
-
-# Or use curl
-curl "http://127.0.0.1:5005/vote/7"
-```
-
-## 🎯 Endpoints
-
-| Endpoint | Method | Description |
-|----------|---------|-------------|
-| `/` | GET | Redirects to overlay |
-| `/overlay` | GET | Main overlay page (transparent, OBS-ready) |
-| `/vote/<score>` | GET | Submit a landing vote (1-10) |
-| `/stats` | GET | Get voting statistics (JSON) |
-| `/stream` | GET | SSE stream for real-time updates |
-| `/reset` | POST | Reset/refresh overlay |
-
-## 🛠️ Configuration
-
-### Environment Variables
-Create a `.env` file in the project root:
-
-```env
-# Server Settings
-PORT=5005
-BANNER_DURATION_MS=8000
-DATA_FILE=landings.json
-
-# AWS Polly (optional - for audio quotes)
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_REGION=us-east-1
-POLLY_VOICE_ID=Joanna
-POLLY_OUTPUT_FORMAT=mp3
-```
-
-### Quote System
-Add custom quotes in `quotes.json`:
-```json
-{
-  "quotes": {
-    "1": ["That was... educational.", "Physics called - they want an explanation."],
-    "10": ["Absolute butter!", "Chief pilot approved!"]
-  }
-}
-```
-
-## 📁 Project Structure
-
-```
-votelandings/
-├── app.py              # Main Flask application
-├── templates/
-│   └── overlay.html    # Overlay template
-├── static/
-│   ├── style.css       # Overlay styling & animations
-│   ├── overlay.js      # Real-time overlay logic
-│   └── *.mp3          # Generated audio files (auto-created)
-├── quotes.json         # Custom quote definitions
-├── landings.json       # Vote data storage (auto-created)
-├── .env               # Environment configuration
-└── README.md          # This file
-```
-
-## 🎨 Features
-
-### Score Categories
-- **1-3 (Bad)**: Red color scheme - "Mayday? That was... educational."
-- **4-6 (OK)**: Amber color scheme - "Not bad, not smooth. We felt it."
-- **7-8 (Good)**: Yellow color scheme - "Nice! Most passengers missed it."
-- **9-10 (Great)**: Green color scheme - "Absolute butter. Chief pilot approved!"
-
-### Animation Effects
-The overlay includes 11 different entrance animations:
-- Spin in from distance
-- Flip in from far
-- Bounce from corner
-- Slide from edges
-- Zoom spin from space
-- Elastic from distance
-- Spiral from edge
-- Twist from void
-
-### Audio Integration
-- Automatic text-to-speech using AWS Polly
-- Generated audio files cached locally
-- Fallback graceful handling if AWS not configured
-
-## 🔧 OBS Setup
-
-1. Add a **Browser Source** in OBS
-2. Set URL to: `http://127.0.0.1:5005/overlay`
-3. Set dimensions: **1080x1920** (or adjust for your stream)
-4. Check **Shutdown source when not visible**
-5. Check **Refresh browser when scene becomes active**
-
-## 🐛 Troubleshooting
-
-### "Overlay isn't working"
-✅ **The overlay IS working** - here's how to verify:
-
-1. **Check if server is running**:
+Run it:
 ```powershell
-netstat -an | findstr :5005
+python ui.py
 ```
-Should show: `TCP 127.0.0.1:5005 0.0.0.0:0 LISTENING`
 
-2. **Test the overlay endpoint**:
-```powershell
-Invoke-WebRequest -Uri "http://127.0.0.1:5005/overlay"
-```
-Should return HTML with 200 OK status.
+What you can adjust:
+- `Port`: Overlay/API server port.
+- `AWS Region`, `Voice`, `Format`: Amazon Polly TTS options.
+- `Enable TTS`: Toggle audio generation/playback for quotes.
+- `Show Events Log`: Show/hide live event stream in the UI.
+- `Audio Effects` and `Noise`: Choose a preset and dial in static/radio/wind levels.
 
-3. **The overlay appears blank** - This is **normal behavior**!
-   - The overlay is transparent until a vote is cast
-   - Trigger a test vote: `Invoke-WebRequest -Uri "http://127.0.0.1:5005/vote/7"`
-   - You should see an animated "7/10" appear
+Buttons 1–10 trigger `GET /vote/<score>` so you can test without Stream Deck.
 
-### Common Issues
+## Stream Deck Setup
+You have two easy options. The built‑in “Website” action works out of the box; an HTTP plugin avoids opening a browser.
 
-**Blank/Transparent Overlay**
-- ✅ This is correct! The overlay only shows content when votes are triggered
-- Test with: `http://127.0.0.1:5005/vote/8`
+Option A — Built‑in Website action (simple):
+1. Open Stream Deck and create or select a profile for your stream.
+2. Drag “Website” onto a blank button.
+3. Set “URL” to `http://127.0.0.1:5005/vote/1` and title the button `1`.
+4. Duplicate the button and update the URL to `/vote/2`, `/vote/3`, … up to `/vote/10`.
+5. Keep `all_in_one.py` running while streaming.
 
-**Static Files Not Loading**
-- Check: `http://127.0.0.1:5005/static/style.css`
-- Check: `http://127.0.0.1:5005/static/overlay.js`
+Note: The Website action may open a browser tab on press. If you prefer a silent request, use Option B.
 
-**No Audio**
-- AWS credentials needed for text-to-speech
-- System will work without audio if AWS not configured
+Option B — HTTP GET plugin (silent requests):
+1. Install a lightweight HTTP request plugin (e.g., “BarRaider’s HTTP Request”).
+2. Drag the HTTP action onto a button.
+3. Set Method to `GET` and URL to `http://127.0.0.1:5005/vote/1`.
+4. Title the button `1` and repeat for scores `2`–`10`.
+5. Ensure Landing Judge is running so the overlay receives the votes.
 
-**Browser Compatibility**
-- Chrome/Edge: Full support
-- Firefox: Full support
-- Safari: Limited SSE support
-- Try hard refresh: Ctrl+F5
+Tips:
+- Place buttons 1–10 in a single row for muscle memory.
+- Use icons/colors to match tiers (bad/ok/good/great) if you like.
+- Test with the Desktop UI first to confirm overlay and audio behave as expected.
 
-## 📊 API Examples
+## Screenshots
+Add images to `static/screenshots/` and they’ll render in this section.
 
-### Vote for a Landing
+- Overlay in OBS
+  ![Overlay in OBS](static/screenshots/obs-overlay.png)
+
+- Desktop UI Control Panel
+  ![Desktop UI](static/screenshots/ui-panel.png)
+
+To capture:
+- OBS: Right-click the Browser Source preview → `Screenshot Output` or use Windows `Win+Shift+S`.
+- Desktop UI: Press `Alt+Print Screen` or use `Win+Shift+S`, then save to `static/screenshots/`.
+
+## Overlay in OBS
+- Add a Browser Source with URL `http://127.0.0.1:5005/overlay`.
+- Set size to your canvas (e.g., 1920×1080). The overlay is transparent when idle.
+- Enable “Refresh browser when scene becomes active” if you switch scenes often.
+- If you want overlay audio, ensure your Browser Source audio is monitored/mixed in OBS.
+
+Timing: The overlay uses a fixed client‑side display time of 1500 ms. Server timing fields are currently ignored by the overlay.
+
+## API Example
 ```bash
-# Score of 8/10
 curl "http://127.0.0.1:5005/vote/8"
-
-# Response:
+```
+Sample response (overlay consumes `quote`, `audio_url`, `score`, `level`; timing fields are ignored by the overlay):
+```json
 {
   "type": "vote",
   "score": 8,
@@ -198,57 +128,35 @@ curl "http://127.0.0.1:5005/vote/8"
 }
 ```
 
-### Get Statistics
-```bash
-curl "http://127.0.0.1:5005/stats"
+## Configuration (.env)
+Common environment variables (managed by the Desktop UI):
+- `PORT`: HTTP server and overlay port (default `5005`).
+- `ENABLE_TTS`: `true|false` to enable Text‑to‑Speech for quotes.
+- `AWS_REGION`: Amazon Polly region, e.g., `us-east-1`.
+- `POLLY_VOICE_ID`: Polly voice, e.g., `Joanna`.
+- `POLLY_OUTPUT_FORMAT`: Audio format, e.g., `mp3`.
+- `ADD_STATIC_NOISE`: Add static noise bed (`true|false`).
+- `EFFECT_PRESET`: Audio processing preset name (`none`, `tower_radio`, `apron_outdoor`, etc.).
+- `STATIC_NOISE_LEVEL`, `RADIO_NOISE_LEVEL`, `WIND_NOISE_LEVEL`: Per‑effect levels.
 
-# Response:
-{
-  "count": 15,
-  "average": 6.8,
-  "best": 10,
-  "recent": [7, 8, 5, 9, 6],
-  "top": [10, 10, 9, 9, 8]
-}
-```
+Timing controls such as `BANNER_DURATION_MS`, `BANNER_MIN_LINGER_MS`, and `HIDE_ON_AUDIO_END` exist server‑side but are currently ignored by the client overlay, which uses a fixed internal duration (1500 ms).
 
-## 🔌 Integration Ideas
+## Quotes and Messages
+- `quotes.json` holds two sections: `quotes` (arrays by score 1–10) and `messages` (one‑liners by score).
+- The overlay displays the selected `quote` string and plays `audio_url` if available.
+- The `messages` map is included in the API response and useful for logs or external consumers, but is not rendered on the overlay.
+- Resetting to defaults uses `quotes.default.json` (a full backup of the original set). If it’s missing, a minimal fallback is used.
 
-- **Twitch Bot**: Viewers vote via chat commands
-- **Discord Bot**: Server members rate landings
-- **Hardware Integration**: Physical buttons/switches
-- **Game Integration**: Auto-trigger based on sim telemetry
-- **Multi-overlay**: Different scenes for different games
+Editing quotes:
+1. Stop the server.
+2. Edit `quotes.json` (keep both `quotes` and `messages` present).
+3. Start the server and test votes.
 
-## 📝 Development
+## Troubleshooting
+- Overlay not showing: Confirm the URL, port, and that a vote/preview has been triggered.
+- No audio: Ensure TTS is enabled, AWS credentials are set, and OBS browser audio is routed.
+- Stream Deck buttons do nothing: Verify the server is running and URLs are `http://127.0.0.1:5005/vote/<1..10>`.
+- Quotes missing: Restore `quotes.default.json` and use the reset function, or copy its contents back to `quotes.json`.
 
-### Running in Development
-```bash
-python app.py
-```
-Server runs on `http://127.0.0.1:5005` with threading enabled for SSE support.
-
-### File Modifications
-- **Templates**: Modify `templates/overlay.html`
-- **Styling**: Edit `static/style.css`
-- **Animations**: Update `static/overlay.js`
-- **Quotes**: Customize `quotes.json`
-
-## 🤝 Contributing
-
-Feel free to submit issues, feature requests, or pull requests to improve the system!
-
-## 📄 License
-
-This project is provided as-is for educational and entertainment purposes.
-
----
-
-## 🎮 Ready to Rate Some Landings?
-
-1. **Start the server**: `python app.py`
-2. **Open overlay**: http://127.0.0.1:5005/overlay
-3. **Test a vote**: http://127.0.0.1:5005/vote/7
-4. **Watch the magic**: Animated scores with sassy quotes!
-
-**Pro Tip**: The overlay is designed to be transparent - if you see "nothing", that means it's working perfectly and waiting for votes! 🛬✨
+## License
+This project is provided as‑is for personal streaming and coaching use.

@@ -1,3 +1,8 @@
+/* Landing Judge Overlay Styles
+   - Portrait 1080x1920 canvas for OBS Browser Source
+   - Animated score with tiered colours and quote text underneath
+   - Hue rotation via CSS custom property (set from desktop UI)
+*/
 /* Base reset */
 * { box-sizing: border-box; }
 html, body { 
@@ -9,12 +14,13 @@ html, body {
   overflow: hidden;
 }
 
-#overlay-root { position: relative; width: 1080px; height: 1920px; }
+#overlay-root { position: relative; width: 1080px; height: 1920px; filter: hue-rotate(var(--overlay-hue, 0deg)); }
 
 /* Number Display */
 .number-display {
   position: fixed;
-  top: 50%;
+  /* Raise final resting position for portrait TikTok framing */
+  top: 42%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 100%;
@@ -34,6 +40,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 18px;
   transform-origin: center;
   transition: transform 0.1s ease;
 }
@@ -45,28 +52,28 @@ html, body {
   text-shadow: 0 0 50px rgba(255, 255, 255, 0.8), 0 0 100px rgba(255, 255, 255, 0.5);
   -webkit-text-stroke: 1px #000000;
   text-stroke: 1px #000000;
-  line-height: 0.8;
-  margin-bottom: 20px;
+  line-height: 1;
+  margin: 0;
 }
 
 .divider-line {
-  width: 200px;
-  height: 8px;
+  width: 260px;
+  height: 6px;
   background: #ffffff;
   box-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
   border: 1px solid #000000;
-  margin: 10px 0;
+  margin: 0;
 }
 
 .max-score {
-  font-size: 120px;
+  font-size: 96px;
   font-weight: 700;
   color: #ffffff;
   text-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
   -webkit-text-stroke: 1px #000000;
   text-stroke: 1px #000000;
-  line-height: 0.8;
-  margin-top: 20px;
+  line-height: 1;
+  margin: 0;
   opacity: 0.9;
 }
 
@@ -75,7 +82,8 @@ html, body {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translateX(-50%) translateY(200px);
+  /* Push quote further below the score to avoid overlap */
+  transform: translateX(-50%) translateY(340px);
   font-size: 32px;
   font-weight: 400;
   color: #ffffff;
@@ -91,7 +99,7 @@ html, body {
 
 .quote-display.show {
   opacity: 0.9;
-  transform: translateX(-50%) translateY(220px);
+  transform: translateX(-50%) translateY(360px);
 }
 
 /* Color tiers for numbers */
@@ -177,3 +185,5 @@ html, body {
 .elastic-distance { animation: elasticFromDistance 1.8s ease-out forwards; }
 .spiral-edge { animation: spiralFromEdge 1.8s ease-out forwards; }
 .twist-void { animation: twistFromVoid 1.8s ease-out forwards; }
+
+/* Overlay has no on-screen settings; all controls live in desktop UI */

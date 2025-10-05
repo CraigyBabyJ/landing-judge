@@ -1,9 +1,10 @@
+<!-- Landing Judge Overlay Page -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1080, height=1920" />
-  <title>Landing Votes Overlay</title>
+  <title>Landing Judge Overlay</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -15,6 +16,7 @@
       width: 1080px;
       height: 1920px;
     }
+    :root { --overlay-hue: {{ overlay_hue_deg | default(0) }}deg; }
   </style>
 </head>
 <body>
@@ -31,10 +33,12 @@
     </div>
     <!-- Hidden audio element for playing quotes -->
     <audio id="quote-audio" preload="none"></audio>
+
+    <!-- No overlay UI controls; colour is controlled from desktop UI -->
   </div>
 
   <script>
-    window.BANNER_DURATION_MS = {{ banner_duration_ms | tojson }};
+    // Timing controls removed; overlay uses a fixed client-side duration.
   </script>
   <script src="/static/overlay.js"></script>
 </body>
