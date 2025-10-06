@@ -32,10 +32,12 @@
       <div class="quote-display" id="quote-display"></div>
     </div>
     <!-- Hidden audio element for playing quotes -->
-    <audio id="quote-audio" preload="none"></audio>
+    <audio id="quote-audio" preload="auto" autoplay muted playsinline></audio>
 
     <!-- No overlay UI controls; colour is controlled from desktop UI -->
   </div>
+
+  <!-- Removed sound unlock prompt; OBS Browser Source auto-plays audio without interaction -->
 
   <script>
     // Timing controls removed; overlay uses a fixed client-side duration.

@@ -65,11 +65,23 @@ python ui.py
 ```
 
 What you can adjust:
-- `Port`: Overlay/API server port.
-- `AWS Region`, `Voice`, `Format`: Amazon Polly TTS options.
+- `Port`: Overlay/API server port (restart required after change).
+- `AWS Region`, `Polly Voice`, `Audio Format (mp3|wav)`: Amazon Polly TTS options.
 - `Enable TTS`: Toggle audio generation/playback for quotes.
-- `Show Events Log`: Show/hide live event stream in the UI.
-- `Audio Effects` and `Noise`: Choose a preset and dial in static/radio/wind levels.
+- `AWS Access Key ID` and `AWS Secret Access Key`: Credentials for Polly.
+- `Audio Effects` presets: None, Airport PA, Gate Desk/Jetway, ATC Radio,
+  Cabin Intercom, Apron/Outdoor PA, Hangar/Concourse Large.
+- `Static Only`: Toggle to play only static noise (mutually exclusive with presets).
+- `Noise Level`: Slider to adjust the noise bed level for the active effect.
+- `Show Events Log`: Show/hide the live events (SSE) panel in the UI.
+
+Additional actions:
+- `Open Overlay`: Launch the overlay page in your browser.
+- `Overlay Colour`: Adjust overlay hue with a live preview dialog.
+- `Edit Quotes`: Open a simple editor for `quotes.json`.
+- `Clear Sound Cache`: Delete all generated `.mp3`/`.wav` files in `static/audio/`
+  and remove `audio_index.json` (recreated automatically on next audio generation).
+- `Reset Defaults`: Restore opinionated defaults and persist to `.env`.
 
 Buttons 1–10 trigger `GET /vote/<score>` so you can test without Stream Deck.
 
@@ -100,38 +112,33 @@ Tips:
 ## Screenshots
 Add images to `static/screenshots/` and they’ll render in this section.
 
-- Overlay in OBS
-  ![Overlay in OBS](static/screenshots/obs-overlay.png)
+- ![Screenshot 1](static/screenshots/Screenshot_1.png)
+- ![Screenshot 2](static/screenshots/Screenshot_2.png)
+- ![Screenshot 3](static/screenshots/Screenshot_3.png)
+- ![Screenshot 4](static/screenshots/Screenshot_4.png)
 
-- Desktop UI Control Panel
-  ![Desktop UI](static/screenshots/ui-panel.png)
-
-To capture:
-- OBS: Right-click the Browser Source preview → `Screenshot Output` or use Windows `Win+Shift+S`.
-- Desktop UI: Press `Alt+Print Screen` or use `Win+Shift+S`, then save to `static/screenshots/`.
 
 ## Overlay in OBS
 - Add a Browser Source with URL `http://127.0.0.1:5005/overlay`.
 - Set size to your canvas (e.g., 1920×1080). The overlay is transparent when idle.
 - Enable “Refresh browser when scene becomes active” if you switch scenes often.
 - If you want overlay audio, ensure your Browser Source audio is monitored/mixed in OBS.
+- Note: OBS Browser Source auto-plays overlay audio without any clicks. Regular browsers may require muted autoplay or a user interaction, but in OBS it works out of the box.
 
-Timing: The overlay uses a fixed client‑side display time of 1500 ms. Server timing fields are currently ignored by the overlay.
 
 ## API Example
 ```bash
 curl "http://127.0.0.1:5005/vote/8"
 ```
-Sample response (overlay consumes `quote`, `audio_url`, `score`, `level`; timing fields are ignored by the overlay):
+Sample response (overlay consumes `quote`, `audio_url`, `score`, `level`):
 ```json
 {
   "type": "vote",
   "score": 8,
-  "message": "Smooth operator. Butter adjacent.",
   "quote": "That was the sweet spot of aviation sass.",
-  "audio_url": "/static/quote_abc123.mp3",
+  "audio_url": "/static/audio/quote_abc123.mp3",
+  
   "level": "good",
-  "duration_ms": 8000,
   "ts": "2025-09-30T16:48:09Z"
 }
 ```
@@ -147,17 +154,14 @@ Common environment variables (managed by the Desktop UI):
 - `EFFECT_PRESET`: Audio processing preset name (`none`, `tower_radio`, `apron_outdoor`, etc.).
 - `STATIC_NOISE_LEVEL`, `RADIO_NOISE_LEVEL`, `WIND_NOISE_LEVEL`: Per‑effect levels.
 
-Timing controls such as `BANNER_DURATION_MS`, `BANNER_MIN_LINGER_MS`, and `HIDE_ON_AUDIO_END` exist server‑side but are currently ignored by the client overlay, which uses a fixed internal duration (1500 ms).
-
-## Quotes and Messages
-- `quotes.json` holds two sections: `quotes` (arrays by score 1–10) and `messages` (one‑liners by score).
+## Quotes
+- `quotes.json` holds `quotes` (arrays by score 1–10).
 - The overlay displays the selected `quote` string and plays `audio_url` if available.
-- The `messages` map is included in the API response and useful for logs or external consumers, but is not rendered on the overlay.
 - Resetting to defaults uses `quotes.default.json` (a full backup of the original set). If it’s missing, a minimal fallback is used.
 
 Editing quotes:
 1. Stop the server.
-2. Edit `quotes.json` (keep both `quotes` and `messages` present).
+2. Edit `quotes.json` (keep `quotes` present).
 3. Start the server and test votes.
 
 ## Troubleshooting

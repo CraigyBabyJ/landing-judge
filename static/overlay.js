@@ -13,6 +13,7 @@
   const scoreFraction = display.querySelector('.score-fraction');
   const quoteDisplay = $('quote-display');
   const quoteAudio = $('quote-audio');
+  // Removed sound unlock prompt and state; OBS handles autoplay without clicks
   // Web Audio graph for effects
   let audioCtx = null;
   let sourceNode = null;
@@ -187,6 +188,8 @@
       console.warn('Audio effects not initialized:', e);
     }
   }
+
+  // Removed unlock handlers; browsers may require muted autoplay, which is handled in play() logic
 
   function makeSoftClipCurve(amount = 1.5) {
     const samples = 1024;
@@ -441,6 +444,11 @@
       initAudioGraph();
       configureEffects(effects);
       try { if (audioCtx && audioCtx.state !== 'running') { audioCtx.resume().catch(() => {}); } } catch (e) {}
+      // Start muted to satisfy autoplay policies, then unmute shortly after
+      try {
+        quoteAudio.muted = true;
+        quoteAudio.volume = 1.0;
+      } catch (e) {}
       quoteAudio.src = audioUrl;
       // Ensure the media element reloads the new source before playing
       try { quoteAudio.load(); } catch (e) {}
@@ -451,11 +459,22 @@
           displayTimer = setTimeout(() => { hideOverlay(); }, AFTER_AUDIO_MS);
         }
       };
-      quoteAudio.play().catch(e => {
+      quoteAudio.play()
+        .then(() => {
+          // Attempt to unmute shortly after playback begins; if audioCtx is
+          // still suspended, the element path should produce audible sound.
+          try {
+            setTimeout(() => {
+              quoteAudio.muted = false;
+            }, 150);
+          } catch (e) { /* ignore */ }
+        })
+        .catch(e => {
         console.log('Audio playback failed:', e);
         if (audioCtx && audioCtx.state === 'suspended') {
           audioCtx.resume().catch(() => {});
         }
+        // Autoplay may be blocked in regular browsers; OBS Browser Source is unaffected
         // Fallback to fixed banner duration if audio didn't play
         if (!previewActive) {
           if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
