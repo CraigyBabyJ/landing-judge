@@ -3,6 +3,8 @@ name: Build Windows EXE (Nuitka + UPX)
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   pull_request:
@@ -10,6 +12,9 @@ on:
       - '**/*.py'
       - 'requirements.txt'
       - '.github/workflows/windows-nuitka.yml'
+
+permissions:
+  contents: write
 
 jobs:
   build-windows:
