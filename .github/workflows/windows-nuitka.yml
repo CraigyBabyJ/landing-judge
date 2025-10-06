@@ -50,13 +50,13 @@ jobs:
             --include-data-files=quotes.json=quotes.json `
             --include-data-files=quotes.default.json=quotes.default.json `
             --output-dir=dist `
-            all_in_one.py
+            main.py
 
       - name: Compress EXE with UPX
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Continue'
-          $exe = Join-Path "dist" "all_in_one.exe"
+          $exe = Join-Path "dist" "main.exe"
           if (Test-Path $exe) {
             # Try UPX compression; if the file is not compressible, continue without failing the job.
             upx --best --lzma "$exe"

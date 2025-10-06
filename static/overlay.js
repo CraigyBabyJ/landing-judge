@@ -6,6 +6,8 @@
   - Overlay shows the quote text and animated score; `message` is for API/logs
 */
 (function () {
+  // Global TTS flag propagated from server settings
+  let ttsEnabled = true;
   const $ = (id) => document.getElementById(id);
 
   const display = $('number-display');
@@ -167,6 +169,20 @@
       dryGain.gain.value = 1.0; wetGain.gain.value = 0.0;
       // Only play noise beds during actual audio playback
       quoteAudio.addEventListener('play', () => {
+        // If TTS is disabled for any reason, immediately kill playback
+        if (!ttsEnabled) {
+          try {
+            quoteAudio.pause();
+            quoteAudio.currentTime = 0;
+            quoteAudio.src = '';
+          } catch (e) { /* ignore */ }
+          try {
+            noiseGain.gain.value = 0.0;
+            radioNoiseGain.gain.value = 0.0;
+            windNoiseGain.gain.value = 0.0;
+          } catch (e) { /* ignore */ }
+          return;
+        }
         try {
           // Only add plain static when 'None' preset is active
           noiseGain.gain.value = (staticEnabled && currentPreset === 'none') ? (staticNoiseLevel || 0.02) : 0.0;
@@ -438,8 +454,8 @@
       }, 400); // Show quote faster after score animation
     }
 
-    // Play audio if available
-    if (audioUrl) {
+    // Play audio only if available and TTS is enabled
+    if (audioUrl && ttsEnabled) {
       initAudioGraph();
       configureEffects(effects);
       try { if (audioCtx && audioCtx.state !== 'running') { audioCtx.resume().catch(() => {}); } } catch (e) {}
@@ -481,7 +497,13 @@
         }
       });
     } else {
-      // No audio: keep old behavior (fixed duration)
+      // No audio: force-stop any previous playback and use fixed duration
+      try {
+        quoteAudio.pause();
+        quoteAudio.currentTime = 0;
+        quoteAudio.src = '';
+      } catch (e) { /* ignore */ }
+      // Keep old behavior (fixed duration)
       if (!previewActive) {
         if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
         displayTimer = setTimeout(() => { hideOverlay(); }, NO_AUDIO_HOLD_MS);
@@ -489,35 +511,80 @@
     }
   }
 
-  function connectSSE() {
-    const es = new EventSource('/stream');
-    es.onmessage = (evt) => {
-      try {
-        const payload = JSON.parse(evt.data);
-        if (payload.type === 'vote') {
-          showAnimatedNumber(payload.score, payload.level, payload.duration_ms, payload.quote, payload.audio_url, payload.effects || null);
-        } else if (payload.type === 'theme') {
+    function connectSSE() {
+      const es = new EventSource('/stream');
+      es.onmessage = (evt) => {
+        try {
+          const payload = JSON.parse(evt.data);
+          if (payload.type === 'vote') {
           try {
-            const deg = parseInt(payload.hue_deg || 0);
-            document.documentElement.style.setProperty('--overlay-hue', `${isNaN(deg) ? 0 : deg}deg`);
-          } catch (e) {
-            // ignore theme update errors
-          }
-        } else if (payload.type === 'settings') {
-          // Only handle audio effects; timing is fixed in JS now
-          try {
-            if (payload.hasOwnProperty('effects') && payload.effects) {
-              configureEffects(payload.effects);
+            if (payload.hasOwnProperty('enable_tts')) {
+              ttsEnabled = !!payload.enable_tts;
+              if (!ttsEnabled) {
+                // Belt-and-suspenders: stop any playing audio immediately
+                try {
+                  quoteAudio.pause();
+                  quoteAudio.currentTime = 0;
+                  quoteAudio.src = '';
+                } catch (e) { /* ignore */ }
+              }
             }
           } catch (e) { /* ignore */ }
-        } else if (payload.type === 'preview') {
-          try {
-            previewActive = !!payload.active;
-            if (previewActive) {
-              const scr = parseInt(payload.score || 1);
-              showPreview(isNaN(scr) ? 1 : Math.max(1, Math.min(10, scr)));
-            } else {
-              // Turn off preview: hide immediately
+          showAnimatedNumber(payload.score, payload.level, payload.duration_ms, payload.quote, payload.audio_url, payload.effects || null);
+          } else if (payload.type === 'theme') {
+            try {
+              const deg = parseInt(payload.hue_deg || 0);
+              document.documentElement.style.setProperty('--overlay-hue', `${isNaN(deg) ? 0 : deg}deg`);
+            } catch (e) {
+              // ignore theme update errors
+            }
+          } else if (payload.type === 'settings') {
+            // Only handle audio effects; timing is fixed in JS now
+            try {
+              if (payload.hasOwnProperty('effects') && payload.effects) {
+                configureEffects(payload.effects);
+              }
+            // Immediately stop any ongoing audio and suspend graph if TTS is disabled
+              if (payload.hasOwnProperty('enable_tts')) {
+                ttsEnabled = !!payload.enable_tts;
+                if (!ttsEnabled) {
+                  try {
+                    quoteAudio.pause();
+                    quoteAudio.currentTime = 0;
+                    // Clear source so autoplay cannot re-trigger accidentally
+                    quoteAudio.src = '';
+                    quoteAudio.muted = true;
+                  } catch (e) { /* ignore */ }
+                  try {
+                    if (audioCtx && audioCtx.state !== 'suspended') {
+                      audioCtx.suspend().catch(() => {});
+                    }
+                  } catch (e) { /* ignore */ }
+                  // Ensure noise beds are fully muted
+                  try {
+                    if (noiseGain) noiseGain.gain.value = 0.0;
+                    if (radioNoiseGain) radioNoiseGain.gain.value = 0.0;
+                    if (windNoiseGain) windNoiseGain.gain.value = 0.0;
+                  } catch (e) { /* ignore */ }
+                } else {
+                  // Re-enable audio graph when TTS is turned back on
+                  try {
+                    if (audioCtx && audioCtx.state === 'suspended') {
+                      audioCtx.resume().catch(() => {});
+                    }
+                    quoteAudio.muted = false;
+                  } catch (e) { /* ignore */ }
+                }
+              }
+            } catch (e) { /* ignore */ }
+          } else if (payload.type === 'preview') {
+            try {
+              previewActive = !!payload.active;
+              if (previewActive) {
+                const scr = parseInt(payload.score || 1);
+                showPreview(isNaN(scr) ? 1 : Math.max(1, Math.min(10, scr)));
+              } else {
+                // Turn off preview: hide immediately
               if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
               display.classList.remove('show');
               display.classList.add('hidden');

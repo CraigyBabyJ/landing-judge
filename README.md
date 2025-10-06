@@ -22,7 +22,7 @@ Use it to crown the “butter king,” call out the “firm” arrivals, and add
    ```
 3. Run the server:
    ```powershell
-   python all_in_one.py
+   python main.py
    ```
 4. Open the overlay in a browser or OBS Browser Source:
    - URL: `http://127.0.0.1:5005/overlay`
@@ -113,7 +113,7 @@ Option A — Built‑in Website action (simple):
 2. Drag “Website” onto a blank button.
 3. Set “URL” to `http://127.0.0.1:5005/vote/1` and title the button `1`.
 4. Duplicate the button and update the URL to `/vote/2`, `/vote/3`, … up to `/vote/10`.
-5. Keep `all_in_one.py` running while streaming.
+5. Keep `main.py` running while streaming.
 
 Note: The Website action may open a browser tab on press. If you prefer a silent request, use Option B.
 
