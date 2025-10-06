@@ -42,6 +42,8 @@ jobs:
             --onefile `
             --standalone `
             --enable-plugin=pyside6 `
+            --assume-yes-for-downloads `
+            --mingw64 `
             --windows-console-mode=disable `
             --include-data-dir=static=static `
             --include-data-dir=templates=templates `
