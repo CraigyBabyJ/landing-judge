@@ -55,9 +55,16 @@ jobs:
       - name: Compress EXE with UPX
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Continue'
           $exe = Join-Path "dist" "all_in_one.exe"
           if (Test-Path $exe) {
+            # Try UPX compression; if the file is not compressible, continue without failing the job.
             upx --best --lzma "$exe"
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "UPX could not compress (ExitCode=$LASTEXITCODE). Keeping original EXE."
+              # Prevent step failure due to UPX returning non-zero
+              $LASTEXITCODE = 0
+            }
           } else {
             Write-Host "Executable not found at $exe"; exit 1
           }

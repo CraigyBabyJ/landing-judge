@@ -384,10 +384,9 @@
     } catch (e) { /* noop */ }
   }
   function showAnimatedNumber(score, level, durationMs, quote = '', audioUrl = '', effects = null) {
-    // Fixed banner display duration for predictable pacing
-    const DEFAULT_MS = 2000;
-    // Additional hold after audio finishes
-    const AFTER_AUDIO_MS = 2000;
+    // Fixed banner display durations for predictable pacing
+    const NO_AUDIO_HOLD_MS = 2000;  // Overlay hold when no audio is selected
+    const AFTER_AUDIO_MS = 2000;     // Additional hold after audio finishes
     function hideOverlay() {
       display.classList.remove('show');
       display.classList.add('hidden');
@@ -478,14 +477,14 @@
         // Fallback to fixed banner duration if audio didn't play
         if (!previewActive) {
           if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
-          displayTimer = setTimeout(() => { hideOverlay(); }, DEFAULT_MS);
+          displayTimer = setTimeout(() => { hideOverlay(); }, NO_AUDIO_HOLD_MS);
         }
       });
     } else {
       // No audio: keep old behavior (fixed duration)
       if (!previewActive) {
         if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
-        displayTimer = setTimeout(() => { hideOverlay(); }, DEFAULT_MS);
+        displayTimer = setTimeout(() => { hideOverlay(); }, NO_AUDIO_HOLD_MS);
       }
     }
   }
