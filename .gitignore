@@ -9,6 +9,10 @@ landings.json
 # Generated audio files
 static/*.mp3
 static/*.wav
+static/audio_index.json
+static/audio/audio_index.json
+static/audio/*.mp3
+static/audio/**/*.mp3
 
 # Python
 __pycache__/

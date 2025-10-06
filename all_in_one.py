@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QDialog,
+    QMessageBox,
     QLabel,
     QLineEdit,
     QMainWindow,
@@ -54,7 +55,8 @@ PORT = int(os.environ.get('PORT', 5005))
 BANNER_DURATION_MS = int(os.environ.get('BANNER_DURATION_MS', 8000))
 BANNER_MIN_LINGER_MS = int(os.environ.get('BANNER_MIN_LINGER_MS', 2000))
 QUOTES_FILE = Path('quotes.json').resolve()
-AUDIO_INDEX_PATH = Path('static/audio_index.json').resolve()
+# Store audio index and files under static/audio/
+AUDIO_INDEX_PATH = Path('static/audio/audio_index.json').resolve()
 OVERLAY_HUE_DEG = int(os.environ.get('OVERLAY_HUE_DEG', '0'))
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -417,7 +419,7 @@ def generate_audio_url(text: str) -> str:
         text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()[:12]
         safe_voice = ''.join(c for c in vid if c.isalnum() or c in ('-', '_'))
         audio_filename = f"quote_{safe_voice}_{engine}_{text_hash}.{POLLY_OUTPUT_FORMAT}"
-        audio_path = Path('static') / audio_filename
+        audio_path = Path('static/audio') / audio_filename
 
         # Load index and reuse if present (engine-aware)
         index = {}
@@ -431,8 +433,12 @@ def generate_audio_url(text: str) -> str:
         key_hash = hashlib.md5(key_material.encode('utf-8')).hexdigest()[:12]
         entry = index.get(key_hash)
         if entry:
-            existing = Path('static') / entry.get('filename', '')
-            if existing.exists():
+            # Prefer new location; fall back to legacy path for backwards compatibility
+            existing_new = Path('static/audio') / entry.get('filename', '')
+            existing_old = Path('static') / entry.get('filename', '')
+            if existing_new.exists():
+                return f"/static/audio/{entry['filename']}"
+            if existing_old.exists():
                 return f"/static/{entry['filename']}"
 
         # Not in index (or file missing) — synthesize and record
@@ -455,14 +461,14 @@ def generate_audio_url(text: str) -> str:
                 )
                 engine = alt
                 audio_filename = f"quote_{safe_voice}_{engine}_{text_hash}.{POLLY_OUTPUT_FORMAT}"
-                audio_path = Path('static') / audio_filename
+                audio_path = Path('static/audio') / audio_filename
                 # Recompute key for alt engine
                 key_material = f"{text}|voice={vid}|engine={engine}|fmt={POLLY_OUTPUT_FORMAT}|region={AWS_REGION}"
                 key_hash = hashlib.md5(key_material.encode('utf-8')).hexdigest()[:12]
             except ClientError:
                 return ""
 
-        audio_path.parent.mkdir(exist_ok=True)
+        audio_path.parent.mkdir(parents=True, exist_ok=True)
         with open(audio_path, 'wb') as f:
             f.write(resp['AudioStream'].read())
 
@@ -483,7 +489,7 @@ def generate_audio_url(text: str) -> str:
                 json.dump(index, f, ensure_ascii=False, indent=2)
         except Exception:
             pass
-        return f"/static/{audio_filename}"
+        return f"/static/audio/{audio_filename}"
     except Exception:
         # If anything goes wrong (including missing credentials), return no audio
         return ""
@@ -1123,11 +1129,18 @@ class AllInOneUI(QMainWindow):
             self.hue_btn.clicked.connect(self.open_hue_dialog)
         except Exception:
             pass
+        # Clear sound cache (delete generated audio and index)
+        self.clear_cache_btn = QPushButton('🗑 Clear Sound Cache')
+        try:
+            self.clear_cache_btn.setToolTip('Delete all generated audio files (mp3/wav) and audio_index.json.')
+        except Exception:
+            pass
         btn_row = QHBoxLayout()
         btn_row.addWidget(self.save_btn)
         btn_row.addWidget(self.open_overlay_btn)
         btn_row.addWidget(self.hue_btn)
         btn_row.addWidget(self.reload_msgs_btn)
+        btn_row.addWidget(self.clear_cache_btn)
         settings_layout.addRow(btn_row)
 
         self.status_label = QLabel('')
@@ -1181,6 +1194,8 @@ class AllInOneUI(QMainWindow):
         self.load_voices_btn.clicked.connect(self.load_voices_from_aws)
         # Open quotes editor dialog instead of plain reload
         self.reload_msgs_btn.clicked.connect(self.open_quotes_editor)
+        # Clear sound cache handler
+        self.clear_cache_btn.clicked.connect(self.clear_sound_cache)
         try:
             self.voice_combo.currentIndexChanged.connect(self._on_voice_changed)
         except Exception:
@@ -1967,6 +1982,68 @@ class AllInOneUI(QMainWindow):
         except Exception:
             import webbrowser
             webbrowser.open(f"{self.base_url()}/overlay")
+
+    def clear_sound_cache(self) -> None:
+        """Confirm and delete all generated audio files and the audio index.
+
+        Removes *.mp3 and *.wav under static/audio, and deletes static/audio/audio_index.json.
+        The index will be recreated automatically the next time an audio clip is generated.
+        """
+        try:
+            msg = (
+                "You are about to delete all stored audio files (MP3/WAV) in static/audio "
+                "and remove audio_index.json.\n\nThis cannot be undone.\n\nProceed?"
+            )
+            result = QMessageBox.question(
+                self,
+                "Clear Sound Cache",
+                msg,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Cancel,
+            )
+            if result != QMessageBox.StandardButton.Yes:
+                try:
+                    self.status_label.setText('Clear Sound Cache canceled.')
+                except Exception:
+                    pass
+                return
+
+            deleted = 0
+            errors = []
+            audio_dir = Path('static/audio')
+            try:
+                if audio_dir.exists():
+                    for pattern in ('*.mp3', '*.wav'):
+                        for p in audio_dir.glob(pattern):
+                            try:
+                                p.unlink()
+                                deleted += 1
+                            except Exception as e:
+                                errors.append(f"Failed to delete {p.name}: {e}")
+            except Exception as e:
+                errors.append(f"Audio folder error: {e}")
+
+            # Delete the audio index file
+            try:
+                if AUDIO_INDEX_PATH.exists():
+                    AUDIO_INDEX_PATH.unlink()
+            except Exception as e:
+                errors.append(f"Failed to delete audio_index.json: {e}")
+
+            if errors:
+                self.status_label.setText(
+                    f"Cleared {deleted} audio files. Some items failed: " + "; ".join(errors)
+                )
+            else:
+                self.status_label.setText(
+                    f"Cleared {deleted} audio files and removed audio_index.json. "
+                    "No restart needed; index will recreate on next audio generation."
+                )
+        except Exception as e:
+            try:
+                self.status_label.setText(f"Error clearing sound cache: {e}")
+            except Exception:
+                pass
 
     def trigger_vote(self, score: int):
         url = f"{self.base_url()}/vote/{score}"
