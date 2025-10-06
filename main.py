@@ -401,8 +401,10 @@ def ui_stylesheet() -> str:
 
 
 def generate_audio_url(text: str) -> str:
-    # Respect the user's toggle
-    if not ENABLE_TTS:
+    # Respect the user's toggle - reload .env and override existing process env so changes apply live
+    load_dotenv(override=True)  # Reload .env and override os.environ
+    tts_enabled = os.environ.get('ENABLE_TTS', 'true').strip().lower() in {'1', 'true', 'yes', 'on'}
+    if not tts_enabled:
         return ""
     try:
         # Resolve voice and engine for region. Use AWS default credential chain if
@@ -664,15 +666,19 @@ def vote(score: int):
     """
     clamped = max(1, min(10, int(score)))
     quote = get_random_quote(clamped)
+    # Check TTS state from environment directly instead of relying on global variable
+    # Ensure we override existing process env so UI-saved changes apply without restart
+    load_dotenv(override=True)  # Reload .env and override os.environ
+    tts_enabled = os.environ.get('ENABLE_TTS', 'true').strip().lower() in {'1', 'true', 'yes', 'on'}
     # Hard guard: do not generate or use cached audio when TTS is disabled
     audio_url = ""
-    if ENABLE_TTS:
+    if tts_enabled:
         audio_url = generate_audio_url(quote)
         if audio_url:
             _increment_audio_play(quote)
     payload = {
         'type': 'vote',
-        'enable_tts': bool(ENABLE_TTS),
+        'enable_tts': bool(tts_enabled),
         'score': clamped,
         'message': MESSAGES.get(str(clamped), ''),
         'quote': quote,
@@ -1391,7 +1397,7 @@ class AllInOneUI(QMainWindow):
             save_env_var('POLLY_OUTPUT_FORMAT', self.format_combo.currentText())
             save_env_var('ENABLE_TTS', 'true' if self.tts_check.isChecked() else 'false')
             save_env_var('SHOW_EVENTS_LOG', 'true' if self.show_events_check.isChecked() else 'false')
-            save_env_var('OVERLAY_HUE_DEG', str(self.hue_spin.value()))
+            save_env_var('OVERLAY_HUE_DEG', str(self.current_hue_deg))
             save_env_var('AWS_ACCESS_KEY_ID', self.key_id.text().strip())
             save_env_var('AWS_SECRET_ACCESS_KEY', self.secret_key.text().strip())
             save_env_var('ADD_STATIC_NOISE', 'true' if self.static_noise_check.isChecked() else 'false')
@@ -1635,7 +1641,7 @@ class AllInOneUI(QMainWindow):
             except Exception:
                 pass
             try:
-                save_env_var('OVERLAY_HUE_DEG', str(self.hue_spin.value()))
+                save_env_var('OVERLAY_HUE_DEG', str(self.current_hue_deg))
             except Exception:
                 pass
             # Credentials: capture current values when editing finished fired
@@ -2136,13 +2142,28 @@ class AllInOneUI(QMainWindow):
             global ENABLE_TTS
             ENABLE_TTS = bool(enabled)
             self.status_label.setText('Text-to-Speech enabled' if enabled else 'Text-to-Speech disabled')
+            # Immediately persist the change to .env
+            try:
+                save_env_var('ENABLE_TTS', 'true' if enabled else 'false')
+                print(f"[DEBUG] TTS toggled to: {enabled}, saved to .env")
+            except Exception as e:
+                print(f"[DEBUG] Failed to save TTS to .env: {e}")
+            # Small delay to ensure .env is written before any votes might be triggered
+            import time
+            time.sleep(0.1)
             # Inform overlay immediately so it can stop any playing audio
             try:
                 hub.broadcast({'type': 'settings', 'enable_tts': bool(ENABLE_TTS)})
+                print(f"[DEBUG] TTS settings broadcast sent: {ENABLE_TTS}")
+            except Exception as e:
+                print(f"[DEBUG] Failed to broadcast TTS settings: {e}")
+            # Also queue autosave for any other pending changes
+            try:
+                self._queue_autosave()
             except Exception:
                 pass
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[DEBUG] Error in TTS toggle handler: {e}")
 
     def _on_voice_changed(self, idx: int):
         try:
@@ -2256,6 +2277,13 @@ def main():
         pass
     win = AllInOneUI()
     win.resize(800, 600)
+    # Force window to appear prominently
+    try:
+        win.raise_()
+        win.activateWindow()
+        win.setWindowState(win.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+    except Exception:
+        pass
     win.show()
     sys.exit(app_qt.exec())
 

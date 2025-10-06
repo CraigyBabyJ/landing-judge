@@ -87,7 +87,7 @@ python ui.py
 What you can adjust:
 - `Port`: Overlay/API server port (restart required after change).
 - `AWS Region`, `Polly Voice`, `Audio Format (mp3|wav)`: Amazon Polly TTS options.
-- `Enable TTS`: Toggle audio generation/playback for quotes.
+- `Enable TTS`: Toggle audio generation/playback for quotes (applies immediately; overlay stops any current playback and future `/vote` responses omit `audio_url`).
 - `AWS Access Key ID` and `AWS Secret Access Key`: Credentials for Polly.
 - `Audio Effects` presets: None, Airport PA, Gate Desk/Jetway, ATC Radio,
   Cabin Intercom, Apron/Outdoor PA, Hangar/Concourse Large.

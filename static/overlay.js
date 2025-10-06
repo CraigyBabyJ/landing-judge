@@ -497,16 +497,19 @@
         }
       });
     } else {
-      // No audio: force-stop any previous playback and use fixed duration
+      // No audio or TTS disabled: force-stop any previous playback and use fixed duration
       try {
         quoteAudio.pause();
         quoteAudio.currentTime = 0;
         quoteAudio.src = '';
       } catch (e) { /* ignore */ }
-      // Keep old behavior (fixed duration)
+      // Show overlay for 2 seconds after animation finishes (giving time to read the quote)
       if (!previewActive) {
         if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
-        displayTimer = setTimeout(() => { hideOverlay(); }, NO_AUDIO_HOLD_MS);
+        // Wait for the score animation to complete (~600ms) plus 2 seconds for reading
+        const animationDuration = 600; // Approximate animation duration
+        const totalDisplayTime = animationDuration + NO_AUDIO_HOLD_MS;
+        displayTimer = setTimeout(() => { hideOverlay(); }, totalDisplayTime);
       }
     }
   }
@@ -530,6 +533,7 @@
               }
             }
           } catch (e) { /* ignore */ }
+          console.log(`Vote: TTS=${ttsEnabled}, hasAudio=${!!payload.audio_url}, audioUrl=${payload.audio_url || 'none'}`);
           showAnimatedNumber(payload.score, payload.level, payload.duration_ms, payload.quote, payload.audio_url, payload.effects || null);
           } else if (payload.type === 'theme') {
             try {
@@ -546,7 +550,9 @@
               }
             // Immediately stop any ongoing audio and suspend graph if TTS is disabled
               if (payload.hasOwnProperty('enable_tts')) {
-                ttsEnabled = !!payload.enable_tts;
+                const newTtsState = !!payload.enable_tts;
+                console.log(`Settings update: TTS ${ttsEnabled} -> ${newTtsState}`);
+                ttsEnabled = newTtsState;
                 if (!ttsEnabled) {
                   try {
                     quoteAudio.pause();
@@ -568,12 +574,25 @@
                   } catch (e) { /* ignore */ }
                 } else {
                   // Re-enable audio graph when TTS is turned back on
+                  console.log('Re-enabling TTS audio...');
                   try {
-                    if (audioCtx && audioCtx.state === 'suspended') {
+                    // Ensure audio context is properly initialized and resumed
+                    if (!audioCtx || audioCtx.state === 'closed') {
+                      // Reinitialize audio graph if it was closed/destroyed
+                      initAudioGraph();
+                    } else if (audioCtx.state === 'suspended') {
                       audioCtx.resume().catch(() => {});
                     }
+                    // Clear any muting and reset audio element
                     quoteAudio.muted = false;
-                  } catch (e) { /* ignore */ }
+                    quoteAudio.volume = 1.0;
+                    // Clear any previous failed source
+                    if (quoteAudio.src && quoteAudio.error) {
+                      quoteAudio.src = '';
+                    }
+                  } catch (e) {
+                    console.warn('Error re-enabling TTS audio:', e);
+                  }
                 }
               }
             } catch (e) { /* ignore */ }
