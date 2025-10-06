@@ -1,11 +1,14 @@
 # Landing Judge
 
-An opinionated, local overlay and control app for rating landings from 1–10 with a snappy on‑screen banner, a witty quote, and optional text‑to‑speech audio. Designed for streamers and coaches who want quick, punchy feedback in OBS or any broadcasting setup.
+A playful, local overlay and control app for rating landings from 1–10 — complete with a snappy on‑screen banner, witty quotes, and optional text‑to‑speech. Perfect for group flying nights, VA events, VATSIM/IVAO meet‑ups, or casual squad sessions where you rate each other’s landings and keep the banter flowing.
+
+Use it to crown the “butter king,” call out the “firm” arrivals, and add a bit of personality to your stream or Discord. Lightweight, fast, and streamer‑friendly.
 
 ## Features
 - Animated overlay banner with tiered colors and subtle motion.
 - Witty quote per score, plus optional Amazon Polly TTS playback.
-- Fixed, client‑side banner visibility (defaults to 1500 ms) for predictable pacing.
+- Fixed, client‑side banner visibility (defaults to 2000 ms) for predictable pacing.
+ - If audio is disabled, the overlay holds visibly for 2000 ms before hiding.
 - One‑click Desktop UI for settings and testing votes.
 - Stream Deck integration for 10 fast vote buttons.
 - Simple API (`GET /vote/<score>`) for external triggers.
@@ -19,7 +22,7 @@ An opinionated, local overlay and control app for rating landings from 1–10 wi
    ```
 3. Run the server:
    ```powershell
-   python all_in_one.py
+   python main.py
    ```
 4. Open the overlay in a browser or OBS Browser Source:
    - URL: `http://127.0.0.1:5005/overlay`
@@ -29,6 +32,23 @@ An opinionated, local overlay and control app for rating landings from 1–10 wi
    ```
 
 Pro tip: The overlay is transparent until a vote or preview is triggered.
+
+## Using the Prebuilt Windows EXE
+If you don’t want to build locally, grab the prebuilt EXE from GitHub Releases and run it directly—no Python needed.
+
+1. Download the latest release ZIP from the “Releases” page.
+2. Unzip to a folder you control (e.g., `C:\Apps\LandingJudge`).
+3. Double‑click the EXE to start the local server.
+   - If Windows SmartScreen warns about an unknown publisher, choose “More info” → “Run anyway”.
+   - If prompted by Windows Firewall, allow access on Private networks.
+4. Open the overlay in OBS or a browser: `http://127.0.0.1:5005/overlay`.
+5. Trigger votes using the URLs `http://127.0.0.1:5005/vote/1..10` or set up Stream Deck (see below).
+
+Notes:
+- Audio/TTS is optional. To enable TTS, set AWS credentials and voice in `.env` (you can create one next to the EXE, see the “Configuration” section).
+- Keep the `static/` and `templates/` folders alongside the EXE if they are included in the ZIP. They provide the overlay CSS/JS and HTML. If your ZIP only has the EXE, you can copy `static/` and `templates/` from this repo into the same folder as the EXE.
+- Quotes are loaded from `quotes.json` next to the EXE. You can edit it to customize messages; a backup `quotes.default.json` is also supported.
+- When audio is disabled, the banner stays visible for ~2 seconds; with audio, it hides 2 seconds after playback ends.
 
 ## Environment Setup
 Copy the sample file and edit values as needed:
@@ -93,7 +113,7 @@ Option A — Built‑in Website action (simple):
 2. Drag “Website” onto a blank button.
 3. Set “URL” to `http://127.0.0.1:5005/vote/1` and title the button `1`.
 4. Duplicate the button and update the URL to `/vote/2`, `/vote/3`, … up to `/vote/10`.
-5. Keep `all_in_one.py` running while streaming.
+5. Keep `main.py` running while streaming.
 
 Note: The Website action may open a browser tab on press. If you prefer a silent request, use Option B.
 

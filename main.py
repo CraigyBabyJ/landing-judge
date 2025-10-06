@@ -664,11 +664,15 @@ def vote(score: int):
     """
     clamped = max(1, min(10, int(score)))
     quote = get_random_quote(clamped)
-    audio_url = generate_audio_url(quote)
-    if audio_url:
-        _increment_audio_play(quote)
+    # Hard guard: do not generate or use cached audio when TTS is disabled
+    audio_url = ""
+    if ENABLE_TTS:
+        audio_url = generate_audio_url(quote)
+        if audio_url:
+            _increment_audio_play(quote)
     payload = {
         'type': 'vote',
+        'enable_tts': bool(ENABLE_TTS),
         'score': clamped,
         'message': MESSAGES.get(str(clamped), ''),
         'quote': quote,
@@ -1448,6 +1452,7 @@ class AllInOneUI(QMainWindow):
             try:
                 hub.broadcast({
                     'type': 'settings',
+                    'enable_tts': bool(ENABLE_TTS),
                     'effects': {
                         'static_noise': bool(ADD_STATIC_NOISE),
                         'preset': str(EFFECT_PRESET or 'none'),
@@ -1557,6 +1562,7 @@ class AllInOneUI(QMainWindow):
             try:
                 hub.broadcast({
                     'type': 'settings',
+                    'enable_tts': bool(ENABLE_TTS),
                     'effects': {
                         'static_noise': bool(ADD_STATIC_NOISE),
                         'preset': str(EFFECT_PRESET or 'none'),
@@ -1653,6 +1659,7 @@ class AllInOneUI(QMainWindow):
             try:
                 hub.broadcast({
                     'type': 'settings',
+                    'enable_tts': bool(ENABLE_TTS),
                     'effects': {
                         'static_noise': bool(ADD_STATIC_NOISE),
                         'preset': str(EFFECT_PRESET or 'none'),
@@ -2129,6 +2136,11 @@ class AllInOneUI(QMainWindow):
             global ENABLE_TTS
             ENABLE_TTS = bool(enabled)
             self.status_label.setText('Text-to-Speech enabled' if enabled else 'Text-to-Speech disabled')
+            # Inform overlay immediately so it can stop any playing audio
+            try:
+                hub.broadcast({'type': 'settings', 'enable_tts': bool(ENABLE_TTS)})
+            except Exception:
+                pass
         except Exception:
             pass
 
