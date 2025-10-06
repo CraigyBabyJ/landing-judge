@@ -44,6 +44,9 @@ jobs:
             --enable-plugin=pyside6 `
             --windows-console-mode=disable `
             --include-data-dir=static=static `
+            --include-data-dir=templates=templates `
+            --include-data-files=quotes.json=quotes.json `
+            --include-data-files=quotes.default.json=quotes.default.json `
             --output-dir=dist `
             all_in_one.py
 
@@ -82,4 +85,3 @@ jobs:
             landing-judge-windows.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
