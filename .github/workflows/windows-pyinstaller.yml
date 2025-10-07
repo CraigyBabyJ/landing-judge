@@ -84,17 +84,6 @@ jobs:
           }
           Write-Host "Icon assets verified."
 
-      - name: Version the EXE filename (tag builds)
-        if: startsWith(github.ref, 'refs/tags/')
-        shell: pwsh
-        run: |
-          $dist = 'dist/LandingJudge'
-          $ver = '${{ github.ref_name }}'
-          $src = Join-Path $dist 'LandingJudge.exe'
-          $dst = Join-Path $dist "LandingJudge-$ver.exe"
-          if (Test-Path -LiteralPath $src) { Copy-Item -LiteralPath $src -Destination $dst -Force }
-          Write-Host "Versioned EXE copied -> $dst"
-
       - name: Package onedir build as zip (Release)
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
