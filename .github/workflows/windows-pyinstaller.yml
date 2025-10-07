@@ -93,8 +93,15 @@ jobs:
           draft: false
           generate_release_notes: true
 
+      - name: Upload artifact (onedir, tag-named)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: LandingJudge-${{ github.ref_name }}-onedir
+          path: dist/LandingJudge/
 
-      - name: Upload artifact (onedir)
+      - name: Upload artifact (onedir, sha-named)
+        if: startsWith(github.ref, 'refs/heads/')
         uses: actions/upload-artifact@v4
         with:
           name: LandingJudge-${{ github.sha }}-onedir
