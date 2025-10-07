@@ -14,8 +14,8 @@ on:
   push:
     tags:
       - 'v*'
-  push:
-    branches: [ main ]
+    branches:
+      - main
     paths:
       - 'main.py'
       - 'requirements.txt'
