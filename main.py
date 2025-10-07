@@ -99,6 +99,8 @@ PORT = int(os.environ.get('PORT', 5005))
 BANNER_DURATION_MS = int(os.environ.get('BANNER_DURATION_MS', 8000))
 BANNER_MIN_LINGER_MS = int(os.environ.get('BANNER_MIN_LINGER_MS', 2000))
 QUOTES_FILE = Path('quotes.json').resolve()
+# Default quotes/messages bundled with the app
+DEFAULT_QUOTES_FILE = Path(os.path.join(os.path.dirname(__file__), 'quotes.default.json')).resolve()
 # Store audio index and files under static/audio/
 AUDIO_INDEX_PATH = Path('static/audio/audio_index.json').resolve()
 OVERLAY_HUE_DEG = int(os.environ.get('OVERLAY_HUE_DEG', '0'))
@@ -154,23 +156,84 @@ def level_for_score(score: int) -> str:
     return 'great'
 
 
+def _load_default_quotes_payload() -> dict:
+    """Load the bundled default quotes/messages, with a minimal fallback."""
+    try:
+        with open(DEFAULT_QUOTES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "quotes": {
+                "1": ["Well, that was... educational.", "Physics called—they want an explanation."],
+                "2": ["Hard arrival. Teeth still rattling."],
+                "3": ["Firm. The landing gear filed a complaint."],
+                "4": ["Not bad, not smooth. We felt it."],
+                "5": ["Acceptable. Coffee only trembled."],
+                "6": ["Decent touch. Cabin crew kept pouring."],
+                "7": ["Nice! Most passengers missed it."],
+                "8": ["Smooth operator. Butter adjacent."],
+                "9": ["Greased it. Polite applause engaged."],
+                "10": ["Absolute butter.", "Chief pilot approved!"]
+            },
+            "messages": {
+                "1": "Mayday? That was… educational.",
+                "2": "Hard arrival. Teeth still rattling.",
+                "3": "Firm. The landing gear filed a complaint.",
+                "4": "Not bad, not smooth. We felt it.",
+                "5": "Acceptable. Coffee only trembled.",
+                "6": "Decent touch. Cabin crew kept pouring.",
+                "7": "Nice! Most passengers missed it.",
+                "8": "Smooth operator. Butter adjacent.",
+                "9": "Greased it. Polite applause engaged.",
+                "10": "Absolute butter. Chief pilot approved!"
+            }
+        }
+
+
 def load_messages() -> dict:
+    """Load messages, merging user overrides on top of defaults."""
+    defaults = _load_default_quotes_payload().get('messages', {})
+    user_msgs = {}
     try:
         with open(QUOTES_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        msgs = data.get('messages', {})
-        return {str(k): str(v) for k, v in msgs.items()}
+        user_msgs = data.get('messages', {})
     except Exception:
-        return {}
+        user_msgs = {}
+    merged = {str(k): str(v) for k, v in defaults.items()}
+    for k, v in user_msgs.items():
+        merged[str(k)] = str(v)
+    return merged
 
 
 def load_quotes() -> dict:
+    """Load quotes, merging user overrides on top of defaults.
+
+    Ensures that missing scores in user quotes fall back to the bundled defaults,
+    so the EXE always has a full set even if quotes.json is trimmed.
+    """
+    defaults = _load_default_quotes_payload().get('quotes', {})
+    user_quotes = {}
     try:
         with open(QUOTES_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        return data.get('quotes', {})
+        user_quotes = data.get('quotes', {})
     except Exception:
-        return {}
+        user_quotes = {}
+    # Merge: defaults first, then overlay user-provided lists
+    merged = {}
+    # Normalize keys as strings
+    for k, v in defaults.items():
+        try:
+            merged[str(k)] = list(v) if isinstance(v, list) else []
+        except Exception:
+            merged[str(k)] = []
+    for k, v in user_quotes.items():
+        try:
+            merged[str(k)] = list(v) if isinstance(v, list) else merged.get(str(k), [])
+        except Exception:
+            pass
+    return merged
 
 
 # -------------------- Voice Labels --------------------
@@ -467,7 +530,7 @@ def generate_audio_url(text: str) -> str:
         text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()[:12]
         safe_voice = ''.join(c for c in vid if c.isalnum() or c in ('-', '_'))
         audio_filename = f"quote_{safe_voice}_{engine}_{text_hash}.{POLLY_OUTPUT_FORMAT}"
-        audio_path = Path('static/audio') / audio_filename
+        audio_path = Path(app.static_folder) / 'audio' / audio_filename
 
         # Load index and reuse if present (engine-aware)
         index = {}
@@ -482,8 +545,8 @@ def generate_audio_url(text: str) -> str:
         entry = index.get(key_hash)
         if entry:
             # Prefer new location; fall back to legacy path for backwards compatibility
-            existing_new = Path('static/audio') / entry.get('filename', '')
-            existing_old = Path('static') / entry.get('filename', '')
+            existing_new = Path(app.static_folder) / 'audio' / entry.get('filename', '')
+            existing_old = Path(app.static_folder) / entry.get('filename', '')
             if existing_new.exists():
                 return f"/static/audio/{entry['filename']}"
             if existing_old.exists():
@@ -509,7 +572,7 @@ def generate_audio_url(text: str) -> str:
                 )
                 engine = alt
                 audio_filename = f"quote_{safe_voice}_{engine}_{text_hash}.{POLLY_OUTPUT_FORMAT}"
-                audio_path = Path('static/audio') / audio_filename
+                audio_path = Path(app.static_folder) / 'audio' / audio_filename
                 # Recompute key for alt engine
                 key_material = f"{text}|voice={vid}|engine={engine}|fmt={POLLY_OUTPUT_FORMAT}|region={AWS_REGION}"
                 key_hash = hashlib.md5(key_material.encode('utf-8')).hexdigest()[:12]
@@ -532,7 +595,7 @@ def generate_audio_url(text: str) -> str:
             'play_count': 0,
         }
         try:
-            AUDIO_INDEX_PATH.parent.mkdir(exist_ok=True)
+            AUDIO_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
             with open(AUDIO_INDEX_PATH, 'w', encoding='utf-8') as f:
                 json.dump(index, f, ensure_ascii=False, indent=2)
         except Exception:
@@ -603,6 +666,10 @@ def sse_format(data: dict) -> str:
 
 # -------------------- Flask App --------------------
 app = Flask(__name__, static_folder='static', template_folder='templates')
+
+# Ensure audio index path aligns with Flask's static folder at runtime (e.g., PyInstaller)
+# This overrides the earlier default to prevent mismatches between write/read locations.
+AUDIO_INDEX_PATH = Path(app.static_folder) / 'audio' / 'audio_index.json'
 
 
 @app.get('/overlay')
@@ -768,6 +835,20 @@ class AllInOneUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Landing Judge - by CraigyBabyJ')
+        # Set window/taskbar icon from the bundled static folder (works in EXE and dev)
+        try:
+            icon_path = Path(app.static_folder) / 'icons' / 'icon.png'
+            if not icon_path.exists():
+                icon_path = Path('static/icons/icon.png')
+            if icon_path.exists():
+                ic = QIcon(str(icon_path))
+                self.setWindowIcon(ic)
+                try:
+                    QApplication.instance().setWindowIcon(ic)
+                except Exception:
+                    pass
+        except Exception:
+            pass
         self.env = load_env()
         self.default_port = int(self.env.get('PORT', str(PORT)) or PORT)
         self.default_banner_ms = int(self.env.get('BANNER_DURATION_MS', str(BANNER_DURATION_MS)) or BANNER_DURATION_MS)
@@ -2157,7 +2238,7 @@ class AllInOneUI(QMainWindow):
 
             deleted = 0
             errors = []
-            audio_dir = Path('static/audio')
+            audio_dir = Path(app.static_folder) / 'audio'
             try:
                 if audio_dir.exists():
                     for pattern in ('*.mp3', '*.wav'):
@@ -2401,6 +2482,25 @@ def main():
 
     # Start UI
     app_qt = QApplication(sys.argv)
+    # Set a global application icon early so Windows taskbar uses it
+    try:
+        # Prefer the bundled static path; fallback to source path for dev
+        icon_path = Path(app.static_folder) / 'icons' / 'icon.png'
+        if not icon_path.exists():
+            # PyInstaller onedir layout often places data under _internal
+            try:
+                exe_dir = Path(getattr(sys, 'frozen', False) and os.path.dirname(sys.executable) or os.getcwd())
+                alt_path = exe_dir / '_internal' / 'static' / 'icons' / 'icon.png'
+                if alt_path.exists():
+                    icon_path = alt_path
+            except Exception:
+                pass
+        if not icon_path.exists():
+            icon_path = Path('static/icons/icon.png')
+        if icon_path.exists():
+            app_qt.setWindowIcon(QIcon(str(icon_path)))
+    except Exception:
+        pass
     # Emoji-capable font for nicer icons/labels
     try:
         app_qt.setFont(QFont('Segoe UI Emoji', 10))

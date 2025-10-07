@@ -48,7 +48,7 @@ jobs:
         run: |
           mkdir -p build
           if [ -f "static/icons/icon.png" ]; then
-            python -c "import os; from PIL import Image; png='static/icons/icon.png'; ico='build/icon.ico'; os.makedirs(os.path.dirname(ico), exist_ok=True); im=Image.open(png).convert('RGBA'); sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)]; im.save(ico, sizes=sizes, format='ICO'); print('Icon generated at '+ico)"
+            python -c "import os; from PIL import Image; png='static/icons/icon.png'; ico='build/app-icon.ico'; os.makedirs(os.path.dirname(ico), exist_ok=True); im=Image.open(png).convert('RGBA'); sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)]; im.save(ico, sizes=sizes, format='ICO'); print('Icon generated at '+ico)"
           else
             echo "No PNG icon at static/icons/icon.png; skipping ICO generation."
           fi
@@ -63,17 +63,37 @@ jobs:
       - name: Build executable (PyInstaller)
         shell: bash
         run: |
-          MODE_FLAG="--onedir"
-          # Console toggle (default false -> --noconsole)
-          if [ "$CONSOLE" = "true" ] || [ "$CONSOLE" = "1" ]; then CONSOLE_FLAG="--console"; else CONSOLE_FLAG="--noconsole"; fi
-          ICON_FLAG=""
-          if [ -f "build/icon.ico" ]; then ICON_FLAG="--icon build/icon.ico"; fi
-          python -m PyInstaller --noconfirm "$MODE_FLAG" $CONSOLE_FLAG $ICON_FLAG \
-            --name LandingJudge \
-            --add-data "static;static" \
-            --add-data "templates;templates" \
-            --hidden-import markupsafe._speedups \
-            main.py
+          # Build using the PyInstaller spec for consistent packaging (datas, icon, options)
+          python -m PyInstaller --noconfirm LandingJudge.spec
+
+      - name: Verify bundled icon and static paths
+        shell: pwsh
+        run: |
+          $dist = Join-Path (Resolve-Path .).Path 'dist/LandingJudge'
+          $iconPng = Join-Path $dist '_internal/static/icons/icon.png'
+          $ico = Join-Path (Resolve-Path .).Path 'build/app-icon.ico'
+          Write-Host "Checking bundled icon.png at: $iconPng"
+          if (-not (Test-Path -LiteralPath $iconPng)) {
+            Write-Error "icon.png not found under _internal/static/icons in onedir output"
+            exit 1
+          }
+          Write-Host "Checking generated ICO at: $ico"
+          if (-not (Test-Path -LiteralPath $ico)) {
+            Write-Error "app-icon.ico was not generated"
+            exit 1
+          }
+          Write-Host "Icon assets verified."
+
+      - name: Version the EXE filename (tag builds)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $dist = 'dist/LandingJudge'
+          $ver = '${{ github.ref_name }}'
+          $src = Join-Path $dist 'LandingJudge.exe'
+          $dst = Join-Path $dist "LandingJudge-$ver.exe"
+          if (Test-Path -LiteralPath $src) { Copy-Item -LiteralPath $src -Destination $dst -Force }
+          Write-Host "Versioned EXE copied -> $dst"
 
       - name: Package onedir build as zip (Release)
         if: startsWith(github.ref, 'refs/tags/')
