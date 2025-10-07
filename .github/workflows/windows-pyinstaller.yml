@@ -48,17 +48,7 @@ jobs:
         run: |
           mkdir -p build
           if [ -f "static/icons/icon.png" ]; then
-            python - <<'PY'
-from PIL import Image
-import os
-png = r'static/icons/icon.png'
-ico = r'build/icon.ico'
-os.makedirs(os.path.dirname(ico), exist_ok=True)
-im = Image.open(png).convert('RGBA')
-sizes = [(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)]
-im.save(ico, sizes=sizes, format='ICO')
-print(f'Icon generated at {ico}')
-PY
+            python -c "import os; from PIL import Image; png='static/icons/icon.png'; ico='build/icon.ico'; os.makedirs(os.path.dirname(ico), exist_ok=True); im=Image.open(png).convert('RGBA'); sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)]; im.save(ico, sizes=sizes, format='ICO'); print('Icon generated at '+ico)"
           else
             echo "No PNG icon at static/icons/icon.png; skipping ICO generation."
           fi
