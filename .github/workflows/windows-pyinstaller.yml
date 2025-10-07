@@ -3,10 +3,6 @@ name: Windows PyInstaller Build
 on:
   workflow_dispatch:
     inputs:
-      build_mode:
-        description: Build mode (onedir or onefile)
-        required: false
-        default: onedir
       console:
         description: Include console window (true/false)
         required: false
@@ -64,12 +60,9 @@ PY
             echo "No PNG icon at static/icons/icon.png; skipping ICO generation."
           fi
 
-      - name: Select build mode
+      - name: Select console mode
         shell: bash
         run: |
-          MODE="${{ github.event.inputs.build_mode }}"
-          if [ -z "$MODE" ]; then MODE="onedir"; fi
-          echo "BUILD_MODE=$MODE" >> "$GITHUB_ENV"
           CONSOLE="${{ github.event.inputs.console }}"
           if [ -z "$CONSOLE" ]; then CONSOLE="false"; fi
           echo "CONSOLE=$CONSOLE" >> "$GITHUB_ENV"
@@ -77,7 +70,7 @@ PY
       - name: Build executable (PyInstaller)
         shell: bash
         run: |
-          if [ "$BUILD_MODE" = "onefile" ]; then MODE_FLAG="--onefile"; else MODE_FLAG="--onedir"; fi
+          MODE_FLAG="--onedir"
           # Console toggle (default false -> --noconsole)
           if [ "$CONSOLE" = "true" ] || [ "$CONSOLE" = "1" ]; then CONSOLE_FLAG="--console"; else CONSOLE_FLAG="--noconsole"; fi
           ICON_FLAG=""
@@ -90,18 +83,12 @@ PY
             main.py
 
       - name: Package onedir build as zip (Release)
-        if: env.BUILD_MODE == 'onedir'
+        if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: |
           $zipPath = "dist/LandingJudge-${{ github.ref_name }}-onedir.zip"
           Compress-Archive -Path 'dist/LandingJudge/*' -DestinationPath $zipPath -Force
           Write-Host "Packaged onedir build -> $zipPath"
-
-      - name: Prepare onefile path (Release)
-        if: env.BUILD_MODE == 'onefile'
-        shell: bash
-        run: |
-          echo "ONEFILE_PATH=dist/LandingJudge.exe" >> "$GITHUB_ENV"
 
       - name: Publish GitHub Release (onedir)
         if: env.BUILD_MODE == 'onedir' && startsWith(github.ref, 'refs/tags/')
@@ -113,26 +100,9 @@ PY
           draft: false
           generate_release_notes: true
 
-      - name: Publish GitHub Release (onefile)
-        if: env.BUILD_MODE == 'onefile' && startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: |
-            dist/LandingJudge.exe
-          draft: false
-          generate_release_notes: true
 
       - name: Upload artifact (onedir)
-        if: env.BUILD_MODE == 'onedir'
         uses: actions/upload-artifact@v4
         with:
           name: LandingJudge-${{ github.sha }}-onedir
           path: dist/LandingJudge/
-
-      - name: Upload artifact (onefile)
-        if: env.BUILD_MODE == 'onefile'
-        uses: actions/upload-artifact@v4
-        with:
-          name: LandingJudge-${{ github.sha }}-onefile
-          path: dist/LandingJudge.exe
