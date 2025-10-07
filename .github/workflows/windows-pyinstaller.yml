@@ -7,6 +7,10 @@ on:
         description: Build mode (onedir or onefile)
         required: false
         default: onedir
+      console:
+        description: Include console window (true/false)
+        required: false
+        default: 'false'
   push:
     branches: [ main ]
     paths:
@@ -63,14 +67,19 @@ PY
           MODE="${{ github.event.inputs.build_mode }}"
           if [ -z "$MODE" ]; then MODE="onedir"; fi
           echo "BUILD_MODE=$MODE" >> "$GITHUB_ENV"
+          CONSOLE="${{ github.event.inputs.console }}"
+          if [ -z "$CONSOLE" ]; then CONSOLE="false"; fi
+          echo "CONSOLE=$CONSOLE" >> "$GITHUB_ENV"
 
       - name: Build executable (PyInstaller)
         shell: bash
         run: |
           if [ "$BUILD_MODE" = "onefile" ]; then MODE_FLAG="--onefile"; else MODE_FLAG="--onedir"; fi
+          # Console toggle (default false -> --noconsole)
+          if [ "$CONSOLE" = "true" ] || [ "$CONSOLE" = "1" ]; then CONSOLE_FLAG="--console"; else CONSOLE_FLAG="--noconsole"; fi
           ICON_FLAG=""
           if [ -f "build/icon.ico" ]; then ICON_FLAG="--icon build/icon.ico"; fi
-          python -m PyInstaller --noconfirm --noconsole "$MODE_FLAG" $ICON_FLAG \
+          python -m PyInstaller --noconfirm "$MODE_FLAG" $CONSOLE_FLAG $ICON_FLAG \
             --name LandingJudge \
             --add-data "static;static" \
             --add-data "templates;templates" \
