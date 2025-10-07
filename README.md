@@ -14,6 +14,12 @@ Use it to crown the “butter king,” call out the “firm” arrivals, and add
 - Simple API (`GET /vote/<score>`) for external triggers.
 - Editable quotes (`quotes.json`) with a safe default backup (`quotes.default.json`).
 
+## Screenshots
+![Overlay Banner](static/screenshots/Screenshot_1.png)
+![Desktop UI – Settings](static/screenshots/Screenshot_2.png)
+![Desktop UI – Votes](static/screenshots/Screenshot_3.png)
+![Overlay in OBS](static/screenshots/Screenshot_4.png)
+
 ## Quick Start
 1. Install Python 3.10+.
 2. Install dependencies:
@@ -192,3 +198,34 @@ Editing quotes:
 
 ## License
 This project is provided as‑is for personal streaming and coaching use.
+
+## Windows Executable
+- Normal launch: `dist\\LandingJudge\\LandingJudge.exe` (no console).
+- Debug launch: `dist\\LandingJudge\\LandingJudge.exe --debug` (opens console for logs).
+- Overlay: `http://127.0.0.1:<PORT>/overlay` (default `5005`).
+
+## Build with PyInstaller
+- Windowed build:
+  ```powershell
+  pyinstaller --noconfirm --noconsole --onedir --name LandingJudge \\
+    --add-data "static;static" \\
+    --add-data "templates;templates" \\
+    --hidden-import markupsafe._speedups \\
+    main.py
+  ```
+- Outputs:
+  - `build\\LandingJudge\\…` intermediate artifacts (safe to delete).
+  - `dist\\LandingJudge\\` ship this entire folder.
+- One-file optional:
+  ```powershell
+  pyinstaller --noconfirm --noconsole --onefile --name LandingJudge \\
+    --add-data "static;static" \\
+    --add-data "templates;templates" \\
+    --hidden-import markupsafe._speedups \\
+    main.py
+  ```
+
+## Distribution Notes
+- Zip and share `dist\\LandingJudge\\` as-is; recipients extract and run `LandingJudge.exe`.
+- Use `--debug` when you need logs from the windowed build.
+- Antivirus may scan one-file builds; `--onedir` is recommended for smoother startup.

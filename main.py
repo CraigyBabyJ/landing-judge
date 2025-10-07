@@ -47,6 +47,50 @@ from PySide6.QtWidgets import (
     QTextEdit,
 )
 
+# -------------------- Optional Debug Console --------------------
+def _enable_debug_console_if_requested() -> None:
+    """On Windows, open a console window when --debug or -d is passed.
+
+    This lets a windowed build (made with PyInstaller --noconsole) still
+    show prints/logs when explicitly requested at runtime.
+    """
+    try:
+        # Only relevant on Windows
+        if not sys.platform.startswith('win'):
+            return
+        argv = list(sys.argv) if sys.argv else []
+        if not any(a in ('--debug', '-d') for a in argv):
+            return
+        # Strip the flag so Qt/Flask don't see it
+        try:
+            sys.argv = [a for a in argv if a not in ('--debug', '-d')]
+        except Exception:
+            pass
+        # Allocate a new console and wire stdio to it
+        try:
+            import ctypes
+            ctypes.windll.kernel32.AllocConsole()
+            try:
+                ctypes.windll.kernel32.SetConsoleTitleW("LandingJudge Debug Console")
+            except Exception:
+                pass
+            # Bind Python stdio to the console device files
+            try:
+                sys.stdout = open('CONOUT$', 'w', buffering=1, encoding='utf-8', errors='replace')
+                sys.stderr = open('CONOUT$', 'w', buffering=1, encoding='utf-8', errors='replace')
+            except Exception:
+                pass
+            try:
+                sys.stdin = open('CONIN$', 'r', encoding='utf-8', errors='replace')
+            except Exception:
+                pass
+            print("[debug] Console enabled. Runtime logs will appear here.")
+        except Exception:
+            # If anything goes wrong, continue without console
+            pass
+    except Exception:
+        pass
+
 # -------------------- Environment --------------------
 load_dotenv()
 ENV_PATH = Path('.env')
@@ -72,6 +116,8 @@ SHOW_EVENTS_LOG = os.environ.get('SHOW_EVENTS_LOG', 'true').strip().lower() in {
 EFFECT_PRESET = os.environ.get('EFFECT_PRESET', 'none').strip().lower()
 # Whether the banner should hide immediately when audio ends (otherwise only by duration)
 HIDE_ON_AUDIO_END = os.environ.get('HIDE_ON_AUDIO_END', 'true').strip().lower() in {'1', 'true', 'yes', 'on'}
+# Ding Dong bell playback toggle
+ENABLE_DINGDONG = os.environ.get('ENABLE_DINGDONG', 'false').strip().lower() in {'1', 'true', 'yes', 'on'}
 # Noise level settings for effects
 def _safe_float(val: str, default: float) -> float:
     try:
@@ -670,6 +716,7 @@ def vote(score: int):
     # Ensure we override existing process env so UI-saved changes apply without restart
     load_dotenv(override=True)  # Reload .env and override os.environ
     tts_enabled = os.environ.get('ENABLE_TTS', 'true').strip().lower() in {'1', 'true', 'yes', 'on'}
+    dingdong_enabled = os.environ.get('ENABLE_DINGDONG', 'false').strip().lower() in {'1', 'true', 'yes', 'on'}
     # Hard guard: do not generate or use cached audio when TTS is disabled
     audio_url = ""
     if tts_enabled:
@@ -679,6 +726,7 @@ def vote(score: int):
     payload = {
         'type': 'vote',
         'enable_tts': bool(tts_enabled),
+        'enable_dingdong': bool(dingdong_enabled),
         'score': clamped,
         'message': MESSAGES.get(str(clamped), ''),
         'quote': quote,
@@ -707,7 +755,7 @@ def root():
 def start_server(port: int):
     # Print helpful info to console
     print('============================================================')
-    print('🛬 LANDING VOTING SYSTEM - All-in-One')
+    print('🛬 LANDING JUDGE')
     print('============================================================')
     print(f'🌐 Server starting on: http://127.0.0.1:{port}')
     print(f'📺 Overlay URL:      http://127.0.0.1:{port}/overlay')
@@ -734,6 +782,11 @@ class AllInOneUI(QMainWindow):
         self.default_format = self.env.get('POLLY_OUTPUT_FORMAT', POLLY_OUTPUT_FORMAT)
         self.default_tts = ENABLE_TTS
         self.default_static_noise = self.env.get('ADD_STATIC_NOISE', 'false').strip().lower() in {'1','true','yes','on'}
+        # Ding Dong enable default
+        try:
+            self.default_dingdong = self.env.get('ENABLE_DINGDONG', 'false').strip().lower() in {'1','true','yes','on'}
+        except Exception:
+            self.default_dingdong = False
         # Default noise levels
         try:
             self.default_static_level = float(self.env.get('STATIC_NOISE_LEVEL', str(STATIC_NOISE_LEVEL)))
@@ -1047,6 +1100,22 @@ class AllInOneUI(QMainWindow):
                 preset_layout.addWidget(widget, row, col)
         # Add rows: single 'Audio Effects' row with unified two-column grid
         settings_layout.addRow('Audio Effects', preset_container)
+        # Normalize initial selection to ensure exclusivity on first load
+        try:
+            none_cb = self.preset_checks.get('none')
+            if none_cb:
+                none_cb.blockSignals(True)
+                # If Static Only is enabled, uncheck 'None' preset so only one appears selected
+                if self.static_noise_check.isChecked():
+                    none_cb.setChecked(False)
+                none_cb.blockSignals(False)
+            # Sync noise slider state with normalized selection
+            try:
+                self._update_noise_slider_state()
+            except Exception:
+                pass
+        except Exception:
+            pass
         # Unified noise level slider that adapts to current effect
         from PySide6.QtWidgets import QSlider
         self.noise_level_label = QLabel('Noise Level')
@@ -1100,6 +1169,20 @@ class AllInOneUI(QMainWindow):
         tts_events_container = QWidget()
         tts_events_container.setLayout(tts_events_row)
         settings_layout.addRow('', tts_events_container)
+        # Ding Dong toggle (independent of TTS and cached audio)
+        self.dingdong_check = QCheckBox('Play Ding Dong on vote')
+        self.dingdong_check.setChecked(getattr(self, 'default_dingdong', False))
+        try:
+            self.dingdong_check.setToolTip('Play dingdong.mp3 whenever a vote event arrives.')
+        except Exception:
+            pass
+        try:
+            self.dingdong_check.setEnabled(True)
+            self.dingdong_check.setTristate(False)
+            self.dingdong_check.toggled.connect(self._queue_autosave)
+        except Exception:
+            pass
+        settings_layout.addRow('', self.dingdong_check)
         # React to static noise toggle: update slider and runtime var immediately
         try:
             self.static_noise_check.toggled.connect(self._on_static_noise_toggled)
@@ -1299,6 +1382,10 @@ class AllInOneUI(QMainWindow):
             except Exception:
                 pass
             try:
+                self.dingdong_check.setChecked(False)
+            except Exception:
+                pass
+            try:
                 # Hue to neutral by default; update runtime and overlay
                 self.current_hue_deg = 0
                 self._post_hue_update(0)
@@ -1396,6 +1483,11 @@ class AllInOneUI(QMainWindow):
             save_env_var('POLLY_VOICE_ID', vid)
             save_env_var('POLLY_OUTPUT_FORMAT', self.format_combo.currentText())
             save_env_var('ENABLE_TTS', 'true' if self.tts_check.isChecked() else 'false')
+            # Persist Ding Dong toggle
+            try:
+                save_env_var('ENABLE_DINGDONG', 'true' if self.dingdong_check.isChecked() else 'false')
+            except Exception:
+                pass
             save_env_var('SHOW_EVENTS_LOG', 'true' if self.show_events_check.isChecked() else 'false')
             save_env_var('OVERLAY_HUE_DEG', str(self.current_hue_deg))
             save_env_var('AWS_ACCESS_KEY_ID', self.key_id.text().strip())
@@ -1424,6 +1516,8 @@ class AllInOneUI(QMainWindow):
             POLLY_VOICE_ID = vid
             POLLY_OUTPUT_FORMAT = self.format_combo.currentText()
             ENABLE_TTS = self.tts_check.isChecked()
+            global ENABLE_DINGDONG
+            ENABLE_DINGDONG = self.dingdong_check.isChecked()
             AWS_ACCESS_KEY_ID = self.key_id.text().strip()
             AWS_SECRET_ACCESS_KEY = self.secret_key.text().strip()
             ADD_STATIC_NOISE = self.static_noise_check.isChecked()
@@ -1459,6 +1553,7 @@ class AllInOneUI(QMainWindow):
                 hub.broadcast({
                     'type': 'settings',
                     'enable_tts': bool(ENABLE_TTS),
+                    'enable_dingdong': bool(ENABLE_DINGDONG),
                     'effects': {
                         'static_noise': bool(ADD_STATIC_NOISE),
                         'preset': str(EFFECT_PRESET or 'none'),
@@ -1514,8 +1609,10 @@ class AllInOneUI(QMainWindow):
                     self._update_noise_slider_state()
                 except Exception:
                     pass
+
         except Exception:
             pass
+
 
     def _on_show_events_toggled(self, enabled: bool) -> None:
         try:
@@ -1598,6 +1695,7 @@ class AllInOneUI(QMainWindow):
             self.voice_combo.currentIndexChanged.connect(self._queue_autosave)
             self.format_combo.currentIndexChanged.connect(self._queue_autosave)
             self.tts_check.toggled.connect(self._queue_autosave)
+            self.dingdong_check.toggled.connect(self._queue_autosave)
             # Credentials: save when editing finishes to avoid writes every keystroke
             self.key_id.editingFinished.connect(self._queue_autosave)
             self.secret_key.editingFinished.connect(self._queue_autosave)
@@ -1637,6 +1735,10 @@ class AllInOneUI(QMainWindow):
                 pass
             save_env_var('ENABLE_TTS', 'true' if self.tts_check.isChecked() else 'false')
             try:
+                save_env_var('ENABLE_DINGDONG', 'true' if self.dingdong_check.isChecked() else 'false')
+            except Exception:
+                pass
+            try:
                 save_env_var('SHOW_EVENTS_LOG', 'true' if self.show_events_check.isChecked() else 'false')
             except Exception:
                 pass
@@ -1666,6 +1768,7 @@ class AllInOneUI(QMainWindow):
                 hub.broadcast({
                     'type': 'settings',
                     'enable_tts': bool(ENABLE_TTS),
+                    'enable_dingdong': bool(self.dingdong_check.isChecked()),
                     'effects': {
                         'static_noise': bool(ADD_STATIC_NOISE),
                         'preset': str(EFFECT_PRESET or 'none'),
@@ -1783,13 +1886,44 @@ class AllInOneUI(QMainWindow):
             kind = self._active_noise_kind()
             if kind == 'radio':
                 self.radio_noise_level = level
+                try:
+                    global RADIO_NOISE_LEVEL
+                    RADIO_NOISE_LEVEL = float(f"{self.radio_noise_level:.3f}")
+                except Exception:
+                    pass
                 self.status_label.setText(f"Radio hiss level set to {level:.3f}")
             elif kind == 'wind':
                 self.wind_noise_level = level
+                try:
+                    global WIND_NOISE_LEVEL
+                    WIND_NOISE_LEVEL = float(f"{self.wind_noise_level:.3f}")
+                except Exception:
+                    pass
                 self.status_label.setText(f"Wind/air bed level set to {level:.3f}")
             else:
                 self.static_noise_level = level
+                try:
+                    global STATIC_NOISE_LEVEL
+                    STATIC_NOISE_LEVEL = float(f"{self.static_noise_level:.3f}")
+                except Exception:
+                    pass
                 self.status_label.setText(f"Static noise level set to {level:.3f}")
+            # Broadcast updated levels immediately so overlay reflects slider changes
+            try:
+                global ENABLE_TTS, ADD_STATIC_NOISE, EFFECT_PRESET
+                hub.broadcast({
+                    'type': 'settings',
+                    'enable_tts': bool(ENABLE_TTS),
+                    'effects': {
+                        'static_noise': bool(ADD_STATIC_NOISE),
+                        'preset': str(EFFECT_PRESET or 'none'),
+                        'static_noise_level': float(STATIC_NOISE_LEVEL or 0.0),
+                        'radio_noise_level': float(RADIO_NOISE_LEVEL or 0.0),
+                        'wind_noise_level': float(WIND_NOISE_LEVEL or 0.0),
+                    },
+                })
+            except Exception:
+                pass
             # Debounced autosave to persist level changes without manual save
             try:
                 self._queue_autosave()
@@ -2252,6 +2386,8 @@ class AllInOneUI(QMainWindow):
 
 
 def main():
+    # Allow an opt-in console for windowed builds when requested
+    _enable_debug_console_if_requested()
     # Configure HiDPI and pixmap smoothing before creating the QApplication instance
     try:
         from PySide6.QtGui import QGuiApplication
