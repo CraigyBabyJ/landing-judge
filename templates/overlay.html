@@ -31,8 +31,12 @@
       <!-- Quote display underneath the score -->
       <div class="quote-display" id="quote-display"></div>
     </div>
+    <!-- Butter stamp element used by .show-butter overlay effect -->
+    <div class="butter-stamp" id="butter-stamp">BUTTER</div>
     <!-- Hidden audio element for playing quotes -->
     <audio id="quote-audio" preload="auto" autoplay muted playsinline></audio>
+    <!-- Hidden audio element for Ding Dong bell (preloaded; stored outside cache folder) -->
+    <audio id="dingdong-audio" src="/static/dingdong.mp3" preload="auto" muted playsinline></audio>
 
     <!-- No overlay UI controls; colour is controlled from desktop UI -->
   </div>

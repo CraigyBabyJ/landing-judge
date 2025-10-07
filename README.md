@@ -14,6 +14,12 @@ Use it to crown the “butter king,” call out the “firm” arrivals, and add
 - Simple API (`GET /vote/<score>`) for external triggers.
 - Editable quotes (`quotes.json`) with a safe default backup (`quotes.default.json`).
 
+## Screenshots
+![Overlay Banner](static/screenshots/Screenshot_1.png)
+![Desktop UI – Settings](static/screenshots/Screenshot_2.png)
+![Desktop UI – Votes](static/screenshots/Screenshot_3.png)
+![Overlay in OBS](static/screenshots/Screenshot_4.png)
+
 ## Quick Start
 1. Install Python 3.10+.
 2. Install dependencies:
@@ -24,6 +30,15 @@ Use it to crown the “butter king,” call out the “firm” arrivals, and add
    ```powershell
    python main.py
    ```
+   Or run the bootstrap script (creates venv, installs deps, starts app):
+   ```powershell
+   .\run_landing_judge.bat
+   ```
+   - Optional: hide console while launching with `SILENT=1`:
+     ```powershell
+     set SILENT=1 & .\run_landing_judge.bat
+     ```
+   - If a Python environment is already activated, the script will use it.
 4. Open the overlay in a browser or OBS Browser Source:
    - URL: `http://127.0.0.1:5005/overlay`
 5. Trigger a test vote (1–10):
@@ -87,7 +102,7 @@ python ui.py
 What you can adjust:
 - `Port`: Overlay/API server port (restart required after change).
 - `AWS Region`, `Polly Voice`, `Audio Format (mp3|wav)`: Amazon Polly TTS options.
-- `Enable TTS`: Toggle audio generation/playback for quotes.
+- `Enable TTS`: Toggle audio generation/playback for quotes (applies immediately; overlay stops any current playback and future `/vote` responses omit `audio_url`).
 - `AWS Access Key ID` and `AWS Secret Access Key`: Credentials for Polly.
 - `Audio Effects` presets: None, Airport PA, Gate Desk/Jetway, ATC Radio,
   Cabin Intercom, Apron/Outdoor PA, Hangar/Concourse Large.
@@ -192,3 +207,41 @@ Editing quotes:
 
 ## License
 This project is provided as‑is for personal streaming and coaching use.
+
+## Windows Executable
+- Normal launch: `dist\\LandingJudge\\LandingJudge.exe` (no console).
+- Debug launch: `dist\\LandingJudge\\LandingJudge.exe --debug` (opens console for logs).
+- Overlay: `http://127.0.0.1:<PORT>/overlay` (default `5005`).
+
+### Using the batch script
+- For local development, `run_landing_judge.bat` will:
+  - Create/activate `.venv` if available.
+  - Install `requirements.txt` (on first run).
+  - Launch the app (`pythonw main.py` to avoid a console when possible).
+  - With `SILENT=1`, it starts hidden and signals readiness.
+
+## Build with PyInstaller
+- Windowed build:
+  ```powershell
+  pyinstaller --noconfirm --noconsole --onedir --name LandingJudge \\
+    --add-data "static;static" \\
+    --add-data "templates;templates" \\
+    --hidden-import markupsafe._speedups \\
+    main.py
+  ```
+- Outputs:
+  - `build\\LandingJudge\\…` intermediate artifacts (safe to delete).
+  - `dist\\LandingJudge\\` ship this entire folder.
+- One-file optional:
+  ```powershell
+  pyinstaller --noconfirm --noconsole --onefile --name LandingJudge \\
+    --add-data "static;static" \\
+    --add-data "templates;templates" \\
+    --hidden-import markupsafe._speedups \\
+    main.py
+  ```
+
+## Distribution Notes
+- Zip and share `dist\\LandingJudge\\` as-is; recipients extract and run `LandingJudge.exe`.
+- Use `--debug` when you need logs from the windowed build.
+- Antivirus may scan one-file builds; `--onedir` is recommended for smoother startup.

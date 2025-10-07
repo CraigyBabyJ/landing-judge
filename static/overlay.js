@@ -56,6 +56,10 @@
   let staticNoiseLevel = 0.02;
   let radioNoiseLevel = 0.0;
   let windNoiseLevel = 0.0;
+  // Ding Dong bell toggle and element
+  let dingdongEnabled = false;
+  let dingdongAudio = null;
+  try { dingdongAudio = document.getElementById('dingdong-audio'); } catch (e) { /* ignore */ }
 
   function initAudioGraph() {
     if (audioCtx) return;
@@ -362,6 +366,33 @@
     'twist-void'
   ];
 
+  // CSS-driven overlay effects toggled via classes on #overlay-root
+  const overlayEffects = [
+    'touchdown',
+    'impact-soft',
+    'impact-hard',
+    'show-butter',
+    'shine',
+    'glitch',
+    'mirage',
+    'speedlines',
+    'confetti',
+    'roll',
+    'dust'
+  ];
+
+  function getRandomOverlayEffect() {
+    return overlayEffects[Math.floor(Math.random() * overlayEffects.length)];
+  }
+
+  function chooseOverlayEffectForScore(score) {
+    // Butter effect only allowed for scores 9 and 10
+    const candidates = (score >= 9)
+      ? overlayEffects
+      : overlayEffects.filter(name => name !== 'show-butter');
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
   function levelForScore(score) {
     if (score <= 3) return 'bad';
     if (score <= 6) return 'ok';
@@ -390,6 +421,8 @@
       // Reset classes and hide quote
       display.classList.remove('hidden', 'show');
       scoreFraction.classList.remove('tier-bad', 'tier-ok', 'tier-good', 'tier-great', ...animations);
+      // Clear overlay-root effects in preview resets
+      try { const root = $('overlay-root'); if (root) { root.classList.remove(...overlayEffects); } } catch (e) {}
       quoteDisplay.classList.remove('show');
       // Set a neutral tier class so colour comes from hue rotation only
       scoreFraction.classList.add('tier-good');
@@ -407,6 +440,11 @@
       display.classList.remove('show');
       display.classList.add('hidden');
       quoteDisplay.classList.remove('show');
+      // Clean up any overlay-root effect classes so special visuals vanish
+      try {
+        const root = $('overlay-root');
+        if (root) { root.classList.remove(...overlayEffects); }
+      } catch (e) { /* ignore */ }
     }
     // Clear previous timer
     if (displayTimer) {
@@ -417,6 +455,11 @@
     // Reset all classes - updated to include new animation classes
     display.classList.remove('hidden', 'show');
     scoreFraction.classList.remove(...animations, 'tier-bad', 'tier-ok', 'tier-good', 'tier-great');
+    // Clear any previous overlay-root effect classes
+    try {
+      const root = $('overlay-root');
+      if (root) { root.classList.remove(...overlayEffects); }
+    } catch (e) { /* ignore */ }
     quoteDisplay.classList.remove('show');
 
     // Set the number
@@ -442,10 +485,28 @@
 
     // Add random animation to score fraction
     scoreFraction.classList.add(randomAnim);
+    // Apply a score-aware overlay effect (butter restricted to 9/10)
+    try {
+      const root = $('overlay-root');
+      if (root) {
+        const randomFx = chooseOverlayEffectForScore(score);
+        root.classList.add(randomFx);
+      }
+    } catch (e) { /* ignore */ }
 
     // Show
     void display.offsetWidth; // Force reflow
     display.classList.add('show');
+
+    // Play Ding Dong bell independently of TTS/cached audio
+    try {
+  if (dingdongEnabled && dingdongAudio) {
+    dingdongAudio.currentTime = 0;
+    dingdongAudio.volume = 1.0;
+    try { dingdongAudio.muted = false; } catch (e) {}
+    dingdongAudio.play().catch(() => {});
+  }
+    } catch (e) { /* ignore */ }
 
     // Show quote with delay
     if (quote) {
@@ -497,16 +558,19 @@
         }
       });
     } else {
-      // No audio: force-stop any previous playback and use fixed duration
+      // No audio or TTS disabled: force-stop any previous playback and use fixed duration
       try {
         quoteAudio.pause();
         quoteAudio.currentTime = 0;
         quoteAudio.src = '';
       } catch (e) { /* ignore */ }
-      // Keep old behavior (fixed duration)
+      // Show overlay for 2 seconds after animation finishes (giving time to read the quote)
       if (!previewActive) {
         if (displayTimer) { clearTimeout(displayTimer); displayTimer = null; }
-        displayTimer = setTimeout(() => { hideOverlay(); }, NO_AUDIO_HOLD_MS);
+        // Wait for the score animation to complete (~600ms) plus 2 seconds for reading
+        const animationDuration = 600; // Approximate animation duration
+        const totalDisplayTime = animationDuration + NO_AUDIO_HOLD_MS;
+        displayTimer = setTimeout(() => { hideOverlay(); }, totalDisplayTime);
       }
     }
   }
@@ -529,7 +593,11 @@
                 } catch (e) { /* ignore */ }
               }
             }
+            if (payload.hasOwnProperty('enable_dingdong')) {
+              dingdongEnabled = !!payload.enable_dingdong;
+            }
           } catch (e) { /* ignore */ }
+          console.log(`Vote: TTS=${ttsEnabled}, hasAudio=${!!payload.audio_url}, audioUrl=${payload.audio_url || 'none'}`);
           showAnimatedNumber(payload.score, payload.level, payload.duration_ms, payload.quote, payload.audio_url, payload.effects || null);
           } else if (payload.type === 'theme') {
             try {
@@ -541,12 +609,17 @@
           } else if (payload.type === 'settings') {
             // Only handle audio effects; timing is fixed in JS now
             try {
+              if (payload.hasOwnProperty('enable_dingdong')) {
+                dingdongEnabled = !!payload.enable_dingdong;
+              }
               if (payload.hasOwnProperty('effects') && payload.effects) {
                 configureEffects(payload.effects);
               }
             // Immediately stop any ongoing audio and suspend graph if TTS is disabled
               if (payload.hasOwnProperty('enable_tts')) {
-                ttsEnabled = !!payload.enable_tts;
+                const newTtsState = !!payload.enable_tts;
+                console.log(`Settings update: TTS ${ttsEnabled} -> ${newTtsState}`);
+                ttsEnabled = newTtsState;
                 if (!ttsEnabled) {
                   try {
                     quoteAudio.pause();
@@ -568,12 +641,25 @@
                   } catch (e) { /* ignore */ }
                 } else {
                   // Re-enable audio graph when TTS is turned back on
+                  console.log('Re-enabling TTS audio...');
                   try {
-                    if (audioCtx && audioCtx.state === 'suspended') {
+                    // Ensure audio context is properly initialized and resumed
+                    if (!audioCtx || audioCtx.state === 'closed') {
+                      // Reinitialize audio graph if it was closed/destroyed
+                      initAudioGraph();
+                    } else if (audioCtx.state === 'suspended') {
                       audioCtx.resume().catch(() => {});
                     }
+                    // Clear any muting and reset audio element
                     quoteAudio.muted = false;
-                  } catch (e) { /* ignore */ }
+                    quoteAudio.volume = 1.0;
+                    // Clear any previous failed source
+                    if (quoteAudio.src && quoteAudio.error) {
+                      quoteAudio.src = '';
+                    }
+                  } catch (e) {
+                    console.warn('Error re-enabling TTS audio:', e);
+                  }
                 }
               }
             } catch (e) { /* ignore */ }
