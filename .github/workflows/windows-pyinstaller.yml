@@ -7,9 +7,6 @@ on:
         description: Include console window (true/false)
         required: false
         default: 'false'
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: write
@@ -74,6 +71,12 @@ jobs:
             exit 1
           }
           Write-Host "Icon assets verified."
+
+      - name: Upload artifact (manual run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: LandingJudge-manual-onedir
+          path: dist/LandingJudge/
 
       - name: Package onedir build as zip (Release)
         if: startsWith(github.ref, 'refs/tags/')
