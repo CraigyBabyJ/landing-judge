@@ -35,6 +35,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
+          pip install pillow
+
+      - name: Generate .ico from PNG (if present)
+        shell: bash
+        run: |
+          mkdir -p build
+          if [ -f "static/icons/icon.png" ]; then
+            python - <<'PY'
+from PIL import Image
+import os
+png = r'static/icons/icon.png'
+ico = r'build/icon.ico'
+os.makedirs(os.path.dirname(ico), exist_ok=True)
+im = Image.open(png).convert('RGBA')
+sizes = [(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)]
+im.save(ico, sizes=sizes, format='ICO')
+print(f'Icon generated at {ico}')
+PY
+          else
+            echo "No PNG icon at static/icons/icon.png; skipping ICO generation."
+          fi
 
       - name: Select build mode
         shell: bash
@@ -47,7 +68,9 @@ jobs:
         shell: bash
         run: |
           if [ "$BUILD_MODE" = "onefile" ]; then MODE_FLAG="--onefile"; else MODE_FLAG="--onedir"; fi
-          python -m PyInstaller --noconfirm --noconsole "$MODE_FLAG" \
+          ICON_FLAG=""
+          if [ -f "build/icon.ico" ]; then ICON_FLAG="--icon build/icon.ico"; fi
+          python -m PyInstaller --noconfirm --noconsole "$MODE_FLAG" $ICON_FLAG \
             --name LandingJudge \
             --add-data "static;static" \
             --add-data "templates;templates" \
