@@ -10,15 +10,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
-    paths:
-      - 'main.py'
-      - 'requirements.txt'
-      - 'static/**'
-      - 'templates/**'
-      - 'LandingJudge.spec'
-      - '.github/workflows/windows-pyinstaller.yml'
 
 permissions:
   contents: write
@@ -109,9 +100,4 @@ jobs:
           name: LandingJudge-${{ github.ref_name }}-onedir
           path: dist/LandingJudge/
 
-      - name: Upload artifact (onedir, sha-named)
-        if: startsWith(github.ref, 'refs/heads/')
-        uses: actions/upload-artifact@v4
-        with:
-          name: LandingJudge-${{ github.sha }}-onedir
-          path: dist/LandingJudge/
+      # No branch artifacts; only tag releases produce assets
