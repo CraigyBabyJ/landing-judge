@@ -61,6 +61,51 @@
   let dingdongAudio = null;
   try { dingdongAudio = document.getElementById('dingdong-audio'); } catch (e) { /* ignore */ }
 
+  // Fallback Ding Dong chime if MP3 is missing: synth a short two-tone bell
+  function playDingDong() {
+    if (!dingdongEnabled) return;
+    // Try playing provided audio element first
+    try {
+      if (dingdongAudio && dingdongAudio.src) {
+        dingdongAudio.currentTime = 0;
+        dingdongAudio.volume = 1.0;
+        try { dingdongAudio.muted = false; } catch (e) {}
+        dingdongAudio.play().catch(() => { synthBell(); });
+        return;
+      }
+    } catch (e) { /* ignore */ }
+    // Otherwise synthesize a simple bell
+    synthBell();
+    function synthBell() {
+      try {
+        const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        try { if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); } } catch (e) {}
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0;
+        gain.connect(ctx.destination);
+        // First tone
+        const o1 = ctx.createOscillator();
+        o1.type = 'sine';
+        o1.frequency.setValueAtTime(988, ctx.currentTime); // B5
+        o1.connect(gain);
+        // Second tone, slightly later and lower
+        const o2 = ctx.createOscillator();
+        o2.type = 'sine';
+        o2.frequency.setValueAtTime(660, ctx.currentTime + 0.15); // E5
+        o2.connect(gain);
+        // Envelope: quick attack, smooth decay
+        const now = ctx.currentTime;
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(0.0, now);
+        gain.gain.linearRampToValueAtTime(0.8, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+        // Start/stop
+        try { o1.start(now); o1.stop(now + 0.75); } catch (e) {}
+        try { o2.start(now + 0.15); o2.stop(now + 0.90); } catch (e) {}
+      } catch (e) { /* ignore */ }
+    }
+  }
+
   function initAudioGraph() {
     if (audioCtx) return;
     try {
@@ -498,15 +543,8 @@
     void display.offsetWidth; // Force reflow
     display.classList.add('show');
 
-    // Play Ding Dong bell independently of TTS/cached audio
-    try {
-  if (dingdongEnabled && dingdongAudio) {
-    dingdongAudio.currentTime = 0;
-    dingdongAudio.volume = 1.0;
-    try { dingdongAudio.muted = false; } catch (e) {}
-    dingdongAudio.play().catch(() => {});
-  }
-    } catch (e) { /* ignore */ }
+    // Play Ding Dong bell independently of TTS/cached audio (with synth fallback)
+    try { playDingDong(); } catch (e) { /* ignore */ }
 
     // Show quote with delay
     if (quote) {
