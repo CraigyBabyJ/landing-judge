@@ -30,6 +30,15 @@ Use it to crown the “butter king,” call out the “firm” arrivals, and add
    ```powershell
    python main.py
    ```
+   Or run the bootstrap script (creates venv, installs deps, starts app):
+   ```powershell
+   .\run_landing_judge.bat
+   ```
+   - Optional: hide console while launching with `SILENT=1`:
+     ```powershell
+     set SILENT=1 & .\run_landing_judge.bat
+     ```
+   - If a Python environment is already activated, the script will use it.
 4. Open the overlay in a browser or OBS Browser Source:
    - URL: `http://127.0.0.1:5005/overlay`
 5. Trigger a test vote (1–10):
@@ -203,6 +212,13 @@ This project is provided as‑is for personal streaming and coaching use.
 - Normal launch: `dist\\LandingJudge\\LandingJudge.exe` (no console).
 - Debug launch: `dist\\LandingJudge\\LandingJudge.exe --debug` (opens console for logs).
 - Overlay: `http://127.0.0.1:<PORT>/overlay` (default `5005`).
+
+### Using the batch script
+- For local development, `run_landing_judge.bat` will:
+  - Create/activate `.venv` if available.
+  - Install `requirements.txt` (on first run).
+  - Launch the app (`pythonw main.py` to avoid a console when possible).
+  - With `SILENT=1`, it starts hidden and signals readiness.
 
 ## Build with PyInstaller
 - Windowed build:
