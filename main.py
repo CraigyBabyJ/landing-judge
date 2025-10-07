@@ -1245,8 +1245,20 @@ class AllInOneUI(QMainWindow):
         except Exception:
             pass
         tts_events_row = QHBoxLayout()
+        # Ensure both checkboxes share the same vertical baseline and spacing
+        try:
+            tts_events_row.setContentsMargins(0, 0, 0, 0)
+            tts_events_row.setSpacing(12)
+            tts_events_row.setAlignment(Qt.AlignLeft)
+        except Exception:
+            pass
         tts_events_row.addWidget(self.tts_check)
         tts_events_row.addWidget(self.show_events_check)
+        try:
+            tts_events_row.setAlignment(self.tts_check, Qt.AlignVCenter)
+            tts_events_row.setAlignment(self.show_events_check, Qt.AlignVCenter)
+        except Exception:
+            pass
         tts_events_container = QWidget()
         tts_events_container.setLayout(tts_events_row)
         settings_layout.addRow('', tts_events_container)
