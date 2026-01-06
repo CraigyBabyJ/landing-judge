@@ -1,0 +1,51 @@
+<!-- Landing Judge Overlay Page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Landing Judge Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    /* Ensure transparent background for OBS */
+    html, body {
+      background: transparent !important;
+      width: 100%;
+      height: 100%;
+    }
+    :root { --overlay-hue: 0deg; }
+  </style>
+</head>
+<body>
+  <div id="overlay-root">
+    <!-- Animated number display -->
+    <div id="number-display" class="number-display hidden">
+      <div class="score-fraction">
+        <div class="vote-score" id="vote-score">10</div>
+        <div class="divider-line"></div>
+        <div class="max-score">10</div>
+      </div>
+      <!-- Quote display underneath the score -->
+      <div class="quote-display" id="quote-display"></div>
+    </div>
+    <!-- Butter stamp element used by .show-butter overlay effect -->
+    <div class="butter-stamp" id="butter-stamp">BUTTER</div>
+    <!-- Hidden audio element for playing quotes -->
+    <audio id="quote-audio" preload="auto" autoplay muted playsinline></audio>
+    <!-- Hidden audio element for Ding Dong bell (preloaded; stored outside cache folder) -->
+    <audio id="dingdong-audio" src="/static/dingdong.mp3" preload="auto" muted playsinline></audio>
+
+    <!-- No overlay UI controls; colour is controlled from desktop UI -->
+  </div>
+
+  <!-- Removed sound unlock prompt; OBS Browser Source auto-plays audio without interaction -->
+
+  <script>
+    // Timing controls removed; overlay uses a fixed client-side duration.
+  </script>
+  <script src="/static/overlay.js"></script>
+</body>
+</html>
