@@ -229,25 +229,25 @@ public partial class App : Application
                 });
 
             AppHost = builder.Build();
-            File.AppendAllText("debug.log", $"[{DateTime.Now}] Host built. Starting...\n");
+            // File.AppendAllText("debug.log", $"[{DateTime.Now}] Host built. Starting...\n");
             await AppHost.StartAsync();
-            File.AppendAllText("debug.log", $"[{DateTime.Now}] Host started. Opening MainWindow...\n");
+            // File.AppendAllText("debug.log", $"[{DateTime.Now}] Host started. Opening MainWindow...\n");
 
             _mainWindow = new MainWindow();
             _mainWindow.Show();
-            File.AppendAllText("debug.log", $"[{DateTime.Now}] MainWindow shown.\n");
+            // File.AppendAllText("debug.log", $"[{DateTime.Now}] MainWindow shown.\n");
         }
         catch (Exception ex)
         {
             File.WriteAllText("error.log", $"Startup Error: {ex.Message}\n{ex.StackTrace}");
-            File.AppendAllText("debug.log", $"[{DateTime.Now}] Startup Error: {ex.Message}\n");
+            // File.AppendAllText("debug.log", $"[{DateTime.Now}] Startup Error: {ex.Message}\n");
             Shutdown();
         }
     }
 
     protected override async void OnExit(ExitEventArgs e)
     {
-        File.AppendAllText("debug.log", $"[{DateTime.Now}] OnExit called. ExitCode: {e.ApplicationExitCode}\n");
+        // File.AppendAllText("debug.log", $"[{DateTime.Now}] OnExit called. ExitCode: {e.ApplicationExitCode}\n");
         if (AppHost != null)
         {
             await AppHost.StopAsync();
