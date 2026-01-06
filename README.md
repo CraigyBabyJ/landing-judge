@@ -74,7 +74,7 @@ You can trigger votes externally (e.g., from a Stream Deck) by making HTTP GET r
 
 ## Project Structure
 
-- **LandingJudge/**: Main C# WPF Project
+- **Root Directory**: Main C# WPF Project
   - **wwwroot/**: Embedded static assets (HTML/CSS/JS) — *baked into the EXE*.
   - **Services/**: Core logic (Vote, TTS, Env).
   - **quotes.default.json**: Embedded default configuration.
