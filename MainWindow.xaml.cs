@@ -110,7 +110,42 @@ public partial class MainWindow : Window
         
         var noiseLevel = _env?.GetDouble("STATIC_NOISE_LEVEL", 0.0) ?? 0.0;
         if (NoiseSlider != null)
-            NoiseSlider.Value = noiseLevel * 100.0; // 0.0-1.0 -> 0-100
+        {
+            double val = noiseLevel * 100.0;
+            if (val < 1.0) val = 1.0;
+            if (val > 5.0) val = 5.0;
+            NoiseSlider.Value = val;
+        }
+
+        UpdateNoiseVisibility();
+    }
+
+    private void UpdateNoiseVisibility()
+    {
+        if (NoiseSettingsGrid == null || StaticOnlyCheck == null || EffectsPanel == null) return;
+
+        bool show = false;
+        string preset = "none";
+        
+        foreach (var child in EffectsPanel.Children)
+        {
+            if (child is RadioButton rb && rb.IsChecked == true)
+            {
+                preset = rb.Tag?.ToString() ?? "none";
+                break;
+            }
+        }
+
+        if (preset == "atc_radio" || preset == "apron_outdoor")
+        {
+            show = true;
+        }
+        else if (preset == "none" && StaticOnlyCheck.IsChecked == true)
+        {
+            show = true;
+        }
+
+        NoiseSettingsGrid.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SaveSettings()
@@ -203,14 +238,26 @@ public partial class MainWindow : Window
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
     }
 
-    private void StaticOnly_Checked(object sender, RoutedEventArgs e) => TriggerSave();
-    private void StaticOnly_Unchecked(object sender, RoutedEventArgs e) => TriggerSave();
+    private void StaticOnly_Checked(object sender, RoutedEventArgs e) 
+    {
+        UpdateNoiseVisibility();
+        TriggerSave();
+    }
+    private void StaticOnly_Unchecked(object sender, RoutedEventArgs e) 
+    {
+        UpdateNoiseVisibility();
+        TriggerSave();
+    }
 
-    private void Effect_Checked(object sender, RoutedEventArgs e) => TriggerSave();
+    private void Effect_Checked(object sender, RoutedEventArgs e) 
+    {
+        UpdateNoiseVisibility();
+        TriggerSave();
+    }
 
     private void NoiseSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (NoiseValue != null) NoiseValue.Text = Math.Round(e.NewValue).ToString();
+        // Binding handles text update
         TriggerSave();
     }
 

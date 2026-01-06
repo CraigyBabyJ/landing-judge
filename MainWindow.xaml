@@ -147,15 +147,15 @@
                         </Grid>
 
                         <!-- Noise Level -->
-                        <Grid Margin="0,10,0,8">
+                        <Grid x:Name="NoiseSettingsGrid" Margin="0,10,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="35"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Noise" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="White" FontWeight="SemiBold"/>
-                            <Slider x:Name="NoiseSlider" Grid.Column="1" Maximum="100" ValueChanged="NoiseSlider_ValueChanged" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="NoiseValue" Grid.Column="2" Text="{Binding ElementName=NoiseSlider, Path=Value, StringFormat=N0}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            <Slider x:Name="NoiseSlider" Grid.Column="1" Minimum="1" Maximum="5" TickFrequency="0.1" IsSnapToTickEnabled="True" ValueChanged="NoiseSlider_ValueChanged" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="NoiseValue" Grid.Column="2" Text="{Binding ElementName=NoiseSlider, Path=Value, StringFormat=N1}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
 
                     </StackPanel>
