@@ -2,6 +2,8 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Channels;
 using System.Windows;
+using Microsoft.Extensions.FileProviders;
+using System.Reflection;
 using LandingJudge.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -23,6 +25,12 @@ public partial class App : Application
 
         try
         {
+            // Prepare audio cache directory
+            var audioCachePath = Path.Combine(AppContext.BaseDirectory, "audio_cache");
+            Directory.CreateDirectory(audioCachePath);
+            // Ensure static/audio structure exists inside cache for consistency if needed, 
+            // but we will map /static/audio to audioCachePath directly.
+
             // ... existing host setup ...
             var builder = Host.CreateDefaultBuilder()
                 .ConfigureWebHostDefaults(webBuilder =>
@@ -45,26 +53,46 @@ public partial class App : Application
                     });
                     webBuilder.Configure(app =>
                     {
-                            app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+                        app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 
-                            var staticPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
-                            if (Directory.Exists(staticPath))
-                            {
-                            app.UseStaticFiles(new StaticFileOptions
-                            {
-                                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(staticPath),
-                                RequestPath = ""
-                            });
-                        }
+                        // 1. Embedded Provider (for wwwroot contents embedded in assembly)
+                        // This expects wwwroot/file.ext to be mapped to root.
+                        var embeddedProvider = new ManifestEmbeddedFileProvider(Assembly.GetEntryAssembly()!, "wwwroot");
+
+                        // 2. Physical Provider (for generated audio files)
+                        // We map this specifically to allow TtsService to write files to disk and serve them.
+                        var physicalProvider = new PhysicalFileProvider(audioCachePath);
+
+                        // Serve embedded files (e.g. /overlay.html, /static/flags/...)
+                        app.UseStaticFiles(new StaticFileOptions
+                        {
+                            FileProvider = embeddedProvider,
+                            RequestPath = ""
+                        });
+
+                        // Serve generated audio files at /static/audio
+                        app.UseStaticFiles(new StaticFileOptions
+                        {
+                            FileProvider = physicalProvider,
+                            RequestPath = "/static/audio"
+                        });
                         
                         app.UseRouting();
 
-                            app.UseEndpoints(endpoints =>
+                        app.UseEndpoints(endpoints =>
+                        {
+                            endpoints.MapGet("/overlay", async context =>
                             {
-                                endpoints.MapGet("/overlay", async context =>
+                                context.Response.ContentType = "text/html";
+                                var fileInfo = embeddedProvider.GetFileInfo("overlay.html");
+                                if (fileInfo.Exists)
                                 {
-                                    context.Response.ContentType = "text/html";
-                                await context.Response.SendFileAsync(Path.Combine(AppContext.BaseDirectory, "wwwroot", "overlay.html"));
+                                    await context.Response.SendFileAsync(fileInfo);
+                                }
+                                else
+                                {
+                                    context.Response.StatusCode = 404;
+                                }
                             });
 
                             endpoints.MapGet("/stream", async (HttpContext context, VoteService voteService, CancellationToken ct) =>

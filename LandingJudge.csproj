@@ -7,6 +7,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>app-icon.ico</ApplicationIcon>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,16 +26,13 @@
     <None Update="quotes.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="quotes.default.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <Content Include="wwwroot\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="quotes.default.json" />
+    <EmbeddedResource Include="wwwroot\**" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.Polly" Version="4.0.3.11" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
     <PackageReference Include="System.Speech" Version="10.0.1" />
     <PackageReference Include="EdgeTTS" Version="1.0.3" />

@@ -19,8 +19,24 @@ public class QuoteService
     {
         var basePath = AppContext.BaseDirectory;
         var path = Path.Combine(basePath, "quotes.json");
-        if (!File.Exists(path)) path = Path.Combine(basePath, "quotes.default.json");
         
+        // If quotes.json doesn't exist, try to extract default from embedded resources
+        if (!File.Exists(path))
+        {
+            try
+            {
+                var assembly = System.Reflection.Assembly.GetEntryAssembly();
+                using var stream = assembly?.GetManifestResourceStream("LandingJudge.quotes.default.json");
+                if (stream != null)
+                {
+                    using var reader = new StreamReader(stream);
+                    var defaultJson = reader.ReadToEnd();
+                    File.WriteAllText(path, defaultJson);
+                }
+            }
+            catch { /* Ignore extraction error */ }
+        }
+
         if (File.Exists(path))
         {
             try 
@@ -34,23 +50,6 @@ public class QuoteService
                 }
             }
             catch { /* Log error */ }
-        }
-        
-        // If empty, load default as fallback if primary was missing/corrupt
-        var defaultPath = Path.Combine(basePath, "quotes.default.json");
-        if ((_quotes.Count == 0 || _messages.Count == 0) && File.Exists(defaultPath) && path != defaultPath)
-        {
-             try 
-            {
-                var json = File.ReadAllText(defaultPath);
-                var root = JsonSerializer.Deserialize<QuoteRoot>(json);
-                if (root != null)
-                {
-                    if (_quotes.Count == 0) _quotes = root.Quotes ?? new();
-                    if (_messages.Count == 0) _messages = root.Messages ?? new();
-                }
-            }
-            catch { }
         }
     }
 

@@ -23,8 +23,8 @@ public class TtsService
     public TtsService(EnvService env)
     {
         _env = env;
-        // wwwroot/static/audio
-        _audioDir = Path.Combine(AppContext.BaseDirectory, "wwwroot", "static", "audio");
+        // Map to local writable cache directory
+        _audioDir = Path.Combine(AppContext.BaseDirectory, "audio_cache");
         _indexFile = Path.Combine(_audioDir, "audio_index.json");
         
         if (!Directory.Exists(_audioDir))
