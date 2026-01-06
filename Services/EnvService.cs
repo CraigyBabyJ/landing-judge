@@ -12,7 +12,7 @@ public class EnvService
 
     public EnvService()
     {
-        _envPath = FindEnvPath();
+        _envPath = FindEnvPath() ?? Path.Combine(AppContext.BaseDirectory, ".env");
         Load();
     }
 

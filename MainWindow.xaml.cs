@@ -83,11 +83,11 @@ public partial class MainWindow : Window
         _port = _env?.GetInt("PORT", 5000) ?? 5000;
 
         if (DingCheck != null) 
-            DingCheck.IsChecked = _env?.GetBool("ENABLE_DINGDONG", false) ?? false;
+            DingCheck.IsChecked = _env?.GetBool("ENABLE_DINGDONG", true) ?? true;
         
         if (LogCheck != null)
         {
-            var showLogs = _env?.GetBool("SHOW_EVENTS_LOG", true) ?? true;
+            var showLogs = _env?.GetBool("SHOW_EVENTS_LOG", false) ?? false;
             LogCheck.IsChecked = showLogs;
             if (EventsGroup != null) EventsGroup.Visibility = showLogs ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -194,9 +194,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OpenTikTok_Click(object sender, RoutedEventArgs e) => OpenUrl("https://tiktok.com");
-    private void OpenDiscord_Click(object sender, RoutedEventArgs e) => OpenUrl("https://discord.com");
-    private void OpenWeb_Click(object sender, RoutedEventArgs e) => OpenUrl("https://google.com"); // Placeholder
+    private void OpenTikTok_Click(object sender, RoutedEventArgs e) => OpenUrl("https://www.tiktok.com/@craigybabyj_new");
+    private void OpenDiscord_Click(object sender, RoutedEventArgs e) => OpenUrl("https://discord.craigybabyj.com");
+    private void OpenWeb_Click(object sender, RoutedEventArgs e) => OpenUrl("https://craigybabyj.com"); // Placeholder
 
     private void OpenUrl(string url)
     {
@@ -230,6 +230,8 @@ public partial class MainWindow : Window
             // Simple reset: delete env vars or just set known defaults
             _env?.Set("PORT", "5000");
             _env?.Set("ENABLE_TTS", "true");
+            _env?.Set("ENABLE_DINGDONG", "true");
+            _env?.Set("SHOW_EVENTS_LOG", "false");
             _env?.Set("EFFECT_PRESET", "none");
             _env?.Set("STATIC_NOISE_LEVEL", "0");
             LoadSettings();
@@ -303,7 +305,7 @@ public partial class MainWindow : Window
 
             _env?.Load();
             var enableTts = _env?.GetBool("ENABLE_TTS", true) ?? true;
-            var enableBell = _env?.GetBool("ENABLE_DINGDONG", false) ?? false;
+            var enableBell = _env?.GetBool("ENABLE_DINGDONG", true) ?? true;
             var durationMs = _env?.GetInt("BANNER_DURATION_MS", 8000) ?? 8000;
 
             var audioUrl = "";

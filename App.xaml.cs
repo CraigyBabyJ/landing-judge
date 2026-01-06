@@ -188,7 +188,7 @@ public partial class App : Application
                                 var tier = quoteService.GetTier(score);
                                 
                                 var enableTts = env.GetBool("ENABLE_TTS", true);
-                                var enableBell = env.GetBool("ENABLE_DINGDONG", false);
+                                var enableBell = env.GetBool("ENABLE_DINGDONG", true);
                                 var audioUrl = enableTts ? await ttsService.GenerateAudioUrlAsync(quote) : "";
 
                                 int durationMs = env.GetInt("BANNER_DURATION_MS", 8000);
@@ -262,7 +262,7 @@ public partial class App : Application
         {
             type = "settings",
             enable_tts = env.GetBool("ENABLE_TTS", true),
-            enable_dingdong = env.GetBool("ENABLE_DINGDONG", false),
+            enable_dingdong = env.GetBool("ENABLE_DINGDONG", true),
             effects = new
             {
                 static_noise = env.GetBool("ADD_STATIC_NOISE", false),
