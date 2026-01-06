@@ -57,11 +57,14 @@ public partial class MainWindow : Window
 
     private void AppendLog(string message)
     {
+        // Debug log file disabled by user request
+        /*
         try 
         {
              File.AppendAllText("debug.log", $"[{DateTime.Now:HH:mm:ss}] {message}\n");
         }
         catch {}
+        */
 
         Dispatcher.Invoke(() =>
         {
@@ -258,22 +261,32 @@ public partial class MainWindow : Window
     {
         if (MessageBox.Show("Clear audio cache?", "Confirm", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
         {
-             // Delete mp3 files in wwwroot/static/audio
+             // Delete mp3/wav files in audio_cache
              try
              {
-                 var path = Path.Combine(AppContext.BaseDirectory, "wwwroot", "static", "audio");
+                 var path = Path.Combine(AppContext.BaseDirectory, "audio_cache");
                  if (Directory.Exists(path))
                  {
-                     foreach (var file in Directory.GetFiles(path, "quote_*.mp3"))
+                     int count = 0;
+                     foreach (var file in Directory.GetFiles(path, "quote_*.*"))
                      {
-                         File.Delete(file);
+                         try 
+                         {
+                             File.Delete(file);
+                             count++;
+                         }
+                         catch { /* ignore locked files */ }
                      }
-                     AppendLog("Audio cache cleared.");
+                     AppendLog($"Audio cache cleared. Removed {count} files.");
+                 }
+                 else
+                 {
+                     AppendLog("Cache directory not found.");
                  }
              }
              catch (Exception ex)
              {
-                 AppendLog($"Error clearing cache: {ex.Message}");
+                  AppendLog($"Error clearing cache: {ex.Message}");
              }
         }
     }

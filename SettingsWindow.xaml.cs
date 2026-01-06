@@ -60,6 +60,10 @@ public partial class SettingsWindow : Window
             .FirstOrDefault(i => string.Equals(i.Content?.ToString(), region, StringComparison.OrdinalIgnoreCase))
             ?? RegionCombo.Items.OfType<ComboBoxItem>().First();
 
+        TtsCheck.IsChecked = _env?.GetBool("ENABLE_TTS", true) ?? true;
+        KeyBox.Text = _env?.Get("AWS_ACCESS_KEY_ID", "") ?? "";
+        SecretBox.Password = _env?.Get("AWS_SECRET_ACCESS_KEY", "") ?? "";
+
         var savedVoice = _env?.Get("POLLY_VOICE_ID", "en-GB-MaisieNeural") ?? "en-GB-MaisieNeural";
         
         // After loading voices (async), we might need to select it. 
@@ -88,13 +92,12 @@ public partial class SettingsWindow : Window
         {
             voiceId = vvm.Id;
         }
-        else if (VoiceCombo.SelectedItem is ComboBoxItem cbi)
+        else
         {
-             voiceId = cbi.Tag?.ToString() ?? cbi.Content?.ToString() ?? "Joanna";
-        }
-        else if (!string.IsNullOrEmpty(VoiceCombo.Text))
-        {
-            voiceId = VoiceCombo.Text;
+             // Fallback or default if selection is invalid
+             var saved = _env.Get("POLLY_VOICE_ID", "Joanna");
+             // If the box is empty, keep the saved one, or default to Joanna
+             voiceId = !string.IsNullOrEmpty(saved) ? saved : "Joanna";
         }
 
         _env.Set("TTS_PROVIDER", provider);
@@ -119,10 +122,20 @@ public partial class SettingsWindow : Window
         _ = LoadVoicesForProviderAsync();
     }
 
+    private int GetLocalePriority(string locale)
+    {
+        if (string.IsNullOrEmpty(locale)) return 100;
+        if (locale.StartsWith("en-GB", StringComparison.OrdinalIgnoreCase)) return 1;
+        if (locale.StartsWith("en-US", StringComparison.OrdinalIgnoreCase)) return 2;
+        if (locale.StartsWith("en-", StringComparison.OrdinalIgnoreCase)) return 3;
+        return 10;
+    }
+
     private async Task LoadVoicesForProviderAsync()
     {
         var provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "AWS";
         VoiceCombo.Items.Clear();
+        var voiceList = new List<VoiceViewModel>();
 
         if (provider == "System")
         {
@@ -130,13 +143,36 @@ public partial class SettingsWindow : Window
             foreach (var v in synth.GetInstalledVoices())
             {
                 var name = v.VoiceInfo.Name;
-                VoiceCombo.Items.Add(new VoiceViewModel { Name = name, Id = name, FlagPath = GetFlagPath(v.VoiceInfo.Culture.Name) });
+                var locale = v.VoiceInfo.Culture.Name;
+                voiceList.Add(new VoiceViewModel { Name = name, Id = name, FlagPath = GetFlagPath(locale), Locale = locale });
             }
         }
         else if (provider == "Edge")
         {
             try
             {
+                // Try dynamic listing
+                var voices = await EdgeTTS.VoicesManager.ListVoices();
+                if (voices != null && voices.Count > 0)
+                {
+                    foreach (var v in voices)
+                    {
+                        voiceList.Add(new VoiceViewModel 
+                        { 
+                            Name = $"{v.ShortName} ({v.Gender})", 
+                            Id = v.ShortName, 
+                            FlagPath = GetFlagPath(v.Locale),
+                            Locale = v.Locale
+                        });
+                    }
+                }
+            }
+            catch { /* Ignore and fall back to hardcoded */ }
+
+            if (voiceList.Count == 0)
+            {
+             try
+             {
                 var commonEdgeVoices = new[] 
                 {
                     "en-US-AriaNeural", "en-US-GuyNeural", "en-US-JennyNeural", "en-US-EricNeural",
@@ -157,40 +193,98 @@ public partial class SettingsWindow : Window
                     var parts = v.Split('-');
                     string locale = parts.Length >= 2 ? $"{parts[0]}-{parts[1]}" : "en-US";
                     
-                    VoiceCombo.Items.Add(new VoiceViewModel { Name = v, Id = v, FlagPath = GetFlagPath(locale) });
+                    voiceList.Add(new VoiceViewModel { Name = v, Id = v, FlagPath = GetFlagPath(locale), Locale = locale });
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to load Edge voices: {ex.Message}");
             }
+            }
         }
         else // AWS
         {
-            var commonVoices = new[] { "Joanna", "Matthew", "Ivy", "Justin", "Kendra", "Joey", "Salli", "Kimberly" };
-            foreach (var v in commonVoices)
+            bool loaded = false;
+            try
             {
-                VoiceCombo.Items.Add(new VoiceViewModel { Name = v, Id = v, FlagPath = GetFlagPath("en-US") });
+                var regionStr = (RegionCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "us-east-1";
+                var regionEndpoint = RegionEndpoint.GetBySystemName(regionStr);
+                
+                AmazonPollyClient client;
+                var ak = KeyBox.Text.Trim();
+                var sk = SecretBox.Password.Trim();
+                
+                if (!string.IsNullOrEmpty(ak) && !string.IsNullOrEmpty(sk))
+                    client = new AmazonPollyClient(ak, sk, regionEndpoint);
+                else
+                    client = new AmazonPollyClient(regionEndpoint);
+
+                var req = new DescribeVoicesRequest();
+                var resp = await client.DescribeVoicesAsync(req);
+                
+                if (resp.Voices.Count > 0)
+                {
+                    foreach (var v in resp.Voices)
+                    {
+                        voiceList.Add(new VoiceViewModel { Name = $"{v.Name} ({v.Gender})", Id = v.Id, FlagPath = GetFlagPath(v.LanguageCode), Locale = v.LanguageCode });
+                    }
+                    loaded = true;
+                }
+            }
+            catch { /* Fallback */ }
+
+            if (!loaded)
+            {
+                var commonVoices = new[] { "Joanna", "Matthew", "Ivy", "Justin", "Kendra", "Joey", "Salli", "Kimberly" };
+                foreach (var v in commonVoices)
+                {
+                    voiceList.Add(new VoiceViewModel { Name = v, Id = v, FlagPath = GetFlagPath("en-US"), Locale = "en-US" });
+                }
             }
         }
         
-        // Restore selection
-        if (_env != null)
+        // Sort and populate
+        var sorted = voiceList
+            .OrderBy(v => GetLocalePriority(v.Locale))
+            .ThenBy(v => v.Locale)
+            .ThenBy(v => v.Name)
+            .ToList();
+
+        foreach (var v in sorted)
         {
-             var savedVoice = _env.Get("POLLY_VOICE_ID", "en-GB-MaisieNeural");
-             var match = VoiceCombo.Items.OfType<VoiceViewModel>().FirstOrDefault(i => i.Id == savedVoice);
-             if (match != null)
-             {
-                 VoiceCombo.SelectedItem = match;
-             }
-             else if (VoiceCombo.Items.Count > 0)
-             {
-                 VoiceCombo.SelectedIndex = 0;
-             }
+            VoiceCombo.Items.Add(v);
         }
-        else if (VoiceCombo.Items.Count > 0) 
+        
+        // Restore selection
+        if (VoiceCombo.Items.Count > 0)
         {
-            VoiceCombo.SelectedIndex = 0;
+            VoiceViewModel? match = null;
+            
+            // 1. Try saved voice
+            var savedVoice = _env?.Get("POLLY_VOICE_ID");
+            if (!string.IsNullOrEmpty(savedVoice))
+            {
+                match = VoiceCombo.Items.OfType<VoiceViewModel>().FirstOrDefault(i => i.Id == savedVoice);
+            }
+
+            // 2. If Edge and no match (or no saved voice), try "Maisie"
+            if (match == null && provider == "Edge")
+            {
+                 match = VoiceCombo.Items.OfType<VoiceViewModel>()
+                         .FirstOrDefault(i => i.Id.Contains("Maisie", StringComparison.OrdinalIgnoreCase) 
+                                           || i.Name.Contains("Maisie", StringComparison.OrdinalIgnoreCase));
+            }
+
+            // 3. Fallback to first item
+            if (match == null)
+            {
+                match = VoiceCombo.Items.OfType<VoiceViewModel>().FirstOrDefault();
+            }
+
+            if (match != null)
+            {
+                VoiceCombo.SelectedItem = match;
+            }
         }
     }
 
@@ -217,6 +311,7 @@ public partial class SettingsWindow : Window
         public string Name { get; set; } = "";
         public string Id { get; set; } = "";
         public string FlagPath { get; set; } = "";
+        public string Locale { get; set; } = "";
         
         public override string ToString() => Name;
     }
