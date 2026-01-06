@@ -29,9 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="quotes.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <EmbeddedResource Include="quotes.default.json" />
     <EmbeddedResource Include="wwwroot\**" />
     <Resource Include="wwwroot\static\**" />

@@ -4,6 +4,7 @@
 
 # Data files
 landings.json
+quotes.json
 *.json.tmp
 
 # Generated audio files
