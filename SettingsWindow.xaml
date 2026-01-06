@@ -147,19 +147,6 @@
                 <Button Grid.Column="2" Content="↻" Margin="5,0,0,0" Click="LoadVoices_Click" ToolTip="Refresh Voices"/>
             </Grid>
 
-             <!-- Format -->
-             <Grid Margin="0,0,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="100"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="Audio Format" VerticalAlignment="Center"/>
-                <ComboBox x:Name="FormatCombo" Grid.Column="1" Height="24">
-                    <ComboBoxItem Content="mp3"/>
-                    <ComboBoxItem Content="ogg_vorbis"/>
-                    <ComboBoxItem Content="pcm"/>
-                </ComboBox>
-            </Grid>
             
              <CheckBox x:Name="TtsCheck" Content="Enable TTS System" Margin="0,0,0,20"/>
 

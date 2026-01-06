@@ -82,7 +82,6 @@ public partial class SettingsWindow : Window
 
         var provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "AWS";
         var region = (RegionCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "us-east-1";
-        var format = (FormatCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "mp3";
         
         string voiceId = "Joanna";
         if (VoiceCombo.SelectedItem is VoiceViewModel vvm)
@@ -102,7 +101,7 @@ public partial class SettingsWindow : Window
         _env.Set("ENABLE_TTS", TtsCheck.IsChecked == true ? "true" : "false");
         _env.Set("AWS_REGION", region);
         _env.Set("POLLY_VOICE_ID", voiceId);
-        _env.Set("POLLY_OUTPUT_FORMAT", format);
+        _env.Set("POLLY_OUTPUT_FORMAT", "mp3");
         _env.Set("AWS_ACCESS_KEY_ID", KeyBox.Text?.Trim() ?? "");
         _env.Set("AWS_SECRET_ACCESS_KEY", SecretBox.Password?.Trim() ?? "");
 

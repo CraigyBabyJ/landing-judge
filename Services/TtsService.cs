@@ -168,7 +168,7 @@ public class TtsService
         var accessKey = _env.Get("AWS_ACCESS_KEY_ID");
         var secretKey = _env.Get("AWS_SECRET_ACCESS_KEY");
         var voiceId = _env.Get("POLLY_VOICE_ID", "Joanna");
-        var format = _env.Get("POLLY_OUTPUT_FORMAT", "mp3");
+        var format = "mp3";
         
         // Default to neural, fallback to standard
         string engine = "neural";
