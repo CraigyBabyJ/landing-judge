@@ -102,13 +102,13 @@
                     <TextBlock Text="⋮" FontSize="20" FontWeight="Bold" Foreground="#E6E8EB" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,-8,0,0"/>
                 </Button>
                 <Button Width="32" Height="32" Margin="3" Background="Transparent" BorderThickness="0" Padding="0" Click="OpenTikTok_Click" Cursor="Hand" ToolTip="Open TikTok">
-                    <Image Source="pack://siteoforigin:,,,/wwwroot/static/icons/tiktok.png"/>
+                    <Image Source="pack://application:,,,/wwwroot/static/icons/tiktok.png"/>
                 </Button>
                 <Button Width="32" Height="32" Margin="3" Background="Transparent" BorderThickness="0" Padding="0" Click="OpenDiscord_Click" Cursor="Hand" ToolTip="Open Discord">
-                    <Image Source="pack://siteoforigin:,,,/wwwroot/static/icons/discord.png"/>
+                    <Image Source="pack://application:,,,/wwwroot/static/icons/discord.png"/>
                 </Button>
                 <Button Width="32" Height="32" Margin="3" Background="Transparent" BorderThickness="0" Padding="0" Click="OpenWeb_Click" Cursor="Hand" ToolTip="Open Website">
-                    <Image Source="pack://siteoforigin:,,,/wwwroot/static/icons/earth.png"/>
+                    <Image Source="pack://application:,,,/wwwroot/static/icons/earth.png"/>
                 </Button>
             </StackPanel>
         </Grid>

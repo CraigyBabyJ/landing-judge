@@ -24,7 +24,13 @@ Use it to crown the “butter king,” call out the “firm” arrivals, and add
 
 ### Prerequisites
 - Windows 10 or 11
-- .NET 10.0 Runtime (if running from binary) or SDK (if building from source)
+- **None** if running the release executable (it's self-contained!).
+- .NET 10.0 SDK (only if building from source).
+
+### Running from Release
+1. Download the latest release.
+2. Run `LandingJudge.exe`.
+3. (Optional) Edit `quotes.json` which will be created automatically on first run.
 
 ### Running from Source
 1. **Clone the repository**:
@@ -33,13 +39,14 @@ Use it to crown the “butter king,” call out the “firm” arrivals, and add
    cd landing-judge
    ```
 
-2. **Build and Run**:
+2. **Build Single-File Executable**:
    ```powershell
-   dotnet build
-   dotnet run
+   dotnet publish LandingJudge.csproj -c Release -r win-x64 -o publish
    ```
+   *The executable will be in the `publish` folder in your project root.*
 
-3. **Usage**:
+3. **Run**:
+   Navigate to the `publish` folder and run `LandingJudge.exe`.
    - The application window will open, showing the **Overlay URL** (e.g., `http://localhost:5000/overlay`).
    - Add this URL as a **Browser Source** in OBS or open it in a web browser.
    - Use the buttons in the app or the HTTP API to trigger votes.
@@ -68,9 +75,9 @@ You can trigger votes externally (e.g., from a Stream Deck) by making HTTP GET r
 ## Project Structure
 
 - **LandingJudge/**: Main C# WPF Project
-  - **wwwroot/**: Static assets for the web overlay (HTML, CSS, JS, Audio).
+  - **wwwroot/**: Embedded static assets (HTML/CSS/JS) — *baked into the EXE*.
   - **Services/**: Core logic (Vote, TTS, Env).
-  - **quotes.json**: Configurable quote database.
+  - **quotes.default.json**: Embedded default configuration.
 
 ## License
 

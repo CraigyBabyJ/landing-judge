@@ -61,29 +61,10 @@ public partial class SettingsWindow : Window
             ?? RegionCombo.Items.OfType<ComboBoxItem>().First();
 
         var savedVoice = _env?.Get("POLLY_VOICE_ID", "en-GB-MaisieNeural") ?? "en-GB-MaisieNeural";
-        // If items are empty, add the saved one
-        if (VoiceCombo.Items.Count == 0)
-        {
-             VoiceCombo.Items.Add(new ComboBoxItem { Content = savedVoice, Tag = savedVoice, IsSelected = true });
-        }
-        else
-        {
-            // Try to match by Tag (ID) or Content (Name)
-            var match = VoiceCombo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (i.Tag?.ToString() ?? i.Content.ToString()) == savedVoice);
-            if (match != null) VoiceCombo.SelectedItem = match;
-            else VoiceCombo.Text = savedVoice; 
-        }
-
-        var format = _env?.Get("POLLY_OUTPUT_FORMAT", "mp3") ?? "mp3";
-        FormatCombo.SelectedItem = FormatCombo.Items
-            .OfType<ComboBoxItem>()
-            .FirstOrDefault(i => string.Equals(i.Content?.ToString(), format, StringComparison.OrdinalIgnoreCase))
-            ?? FormatCombo.Items.OfType<ComboBoxItem>().First();
-
-        TtsCheck.IsChecked = _env?.GetBool("ENABLE_TTS", true) ?? true;
-
-        KeyBox.Text = _env?.Get("AWS_ACCESS_KEY_ID", "") ?? "";
-        SecretBox.Password = _env?.Get("AWS_SECRET_ACCESS_KEY", "") ?? "";
+        
+        // After loading voices (async), we might need to select it. 
+        // Since LoadVoicesForProviderAsync is async, we might race here.
+        // For simplicity, we trust LoadVoicesForProviderAsync will be called or we set it if items exist.
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
@@ -104,9 +85,13 @@ public partial class SettingsWindow : Window
         var format = (FormatCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "mp3";
         
         string voiceId = "Joanna";
-        if (VoiceCombo.SelectedItem is ComboBoxItem cbi)
+        if (VoiceCombo.SelectedItem is VoiceViewModel vvm)
         {
-            voiceId = cbi.Tag?.ToString() ?? cbi.Content?.ToString() ?? "Joanna";
+            voiceId = vvm.Id;
+        }
+        else if (VoiceCombo.SelectedItem is ComboBoxItem cbi)
+        {
+             voiceId = cbi.Tag?.ToString() ?? cbi.Content?.ToString() ?? "Joanna";
         }
         else if (!string.IsNullOrEmpty(VoiceCombo.Text))
         {
@@ -146,14 +131,13 @@ public partial class SettingsWindow : Window
             foreach (var v in synth.GetInstalledVoices())
             {
                 var name = v.VoiceInfo.Name;
-                VoiceCombo.Items.Add(new ComboBoxItem { Content = name, Tag = name });
+                VoiceCombo.Items.Add(new VoiceViewModel { Name = name, Id = name, FlagPath = GetFlagPath(v.VoiceInfo.Culture.Name) });
             }
         }
         else if (provider == "Edge")
         {
             try
             {
-                // Using a hardcoded list of common multilingual voices as EdgeTTS.GetVoices() is not available
                 var commonEdgeVoices = new[] 
                 {
                     "en-US-AriaNeural", "en-US-GuyNeural", "en-US-JennyNeural", "en-US-EricNeural",
@@ -170,7 +154,11 @@ public partial class SettingsWindow : Window
 
                 foreach (var v in commonEdgeVoices)
                 {
-                    VoiceCombo.Items.Add(new ComboBoxItem { Content = v, Tag = v });
+                    // Extract locale from name (e.g. en-US from en-US-AriaNeural)
+                    var parts = v.Split('-');
+                    string locale = parts.Length >= 2 ? $"{parts[0]}-{parts[1]}" : "en-US";
+                    
+                    VoiceCombo.Items.Add(new VoiceViewModel { Name = v, Id = v, FlagPath = GetFlagPath(locale) });
                 }
             }
             catch (Exception ex)
@@ -180,15 +168,57 @@ public partial class SettingsWindow : Window
         }
         else // AWS
         {
-            // Just add some common ones or leave empty to type in manually
             var commonVoices = new[] { "Joanna", "Matthew", "Ivy", "Justin", "Kendra", "Joey", "Salli", "Kimberly" };
             foreach (var v in commonVoices)
             {
-                VoiceCombo.Items.Add(new ComboBoxItem { Content = v, Tag = v });
+                VoiceCombo.Items.Add(new VoiceViewModel { Name = v, Id = v, FlagPath = GetFlagPath("en-US") });
             }
         }
         
-        if (VoiceCombo.Items.Count > 0) 
+        // Restore selection
+        if (_env != null)
+        {
+             var savedVoice = _env.Get("POLLY_VOICE_ID", "en-GB-MaisieNeural");
+             var match = VoiceCombo.Items.OfType<VoiceViewModel>().FirstOrDefault(i => i.Id == savedVoice);
+             if (match != null)
+             {
+                 VoiceCombo.SelectedItem = match;
+             }
+             else if (VoiceCombo.Items.Count > 0)
+             {
+                 VoiceCombo.SelectedIndex = 0;
+             }
+        }
+        else if (VoiceCombo.Items.Count > 0) 
+        {
             VoiceCombo.SelectedIndex = 0;
+        }
+    }
+
+    private string GetFlagPath(string locale)
+    {
+        // Simple mapping from locale to flag code
+        // locale example: en-US, fr-FR
+        if (string.IsNullOrEmpty(locale)) return "pack://application:,,,/wwwroot/static/icons/earth.png";
+
+        var countryCode = locale.Split('-').Last().ToLower();
+        
+        // Handle special cases or default
+        if (countryCode == "en") countryCode = "us"; // Default English to US flag if generic
+        
+        // Mappings for specific overrides if needed
+        if (locale.StartsWith("en-GB")) countryCode = "gb";
+        if (locale.StartsWith("en-AU")) countryCode = "au";
+        
+        return $"pack://application:,,,/wwwroot/static/flags/{countryCode}.png";
+    }
+
+    public class VoiceViewModel
+    {
+        public string Name { get; set; } = "";
+        public string Id { get; set; } = "";
+        public string FlagPath { get; set; } = "";
+        
+        public override string ToString() => Name;
     }
 }

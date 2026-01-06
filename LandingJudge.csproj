@@ -28,6 +28,7 @@
     </None>
     <EmbeddedResource Include="quotes.default.json" />
     <EmbeddedResource Include="wwwroot\**" />
+    <Resource Include="wwwroot\static\**" />
   </ItemGroup>
 
   <ItemGroup>
