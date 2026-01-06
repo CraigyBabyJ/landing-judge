@@ -229,6 +229,7 @@ public partial class MainWindow : Window
         {
             // Simple reset: delete env vars or just set known defaults
             _env?.Set("PORT", "5000");
+            _env?.Set("TTS_PROVIDER", "Edge");
             _env?.Set("ENABLE_TTS", "true");
             _env?.Set("ENABLE_DINGDONG", "true");
             _env?.Set("SHOW_EVENTS_LOG", "false");

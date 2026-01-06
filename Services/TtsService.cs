@@ -63,7 +63,7 @@ public class TtsService
         if (!_env.GetBool("ENABLE_TTS", true)) return "";
         if (string.IsNullOrWhiteSpace(text)) return "";
 
-        var provider = _env.Get("TTS_PROVIDER", "AWS");
+        var provider = _env.Get("TTS_PROVIDER", "Edge");
         if (provider == "System")
         {
             var sysVoiceId = _env.Get("POLLY_VOICE_ID"); // For System provider, this holds the voice name

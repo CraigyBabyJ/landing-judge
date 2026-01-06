@@ -35,7 +35,7 @@ public partial class SettingsWindow : Window
     private void UpdateVisibility()
     {
         if (AwsSettingsPanel == null) return;
-        var provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "AWS";
+        var provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Edge";
         AwsSettingsPanel.Visibility = (provider == "System" || provider == "Edge") ? Visibility.Collapsed : Visibility.Visible;
     }
 
@@ -84,7 +84,7 @@ public partial class SettingsWindow : Window
             _env.Set("PORT", parsedPort.ToString());
         }
 
-        var provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "AWS";
+        var provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Edge";
         var region = (RegionCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "us-east-1";
         
         string voiceId = "Joanna";
