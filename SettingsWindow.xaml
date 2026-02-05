@@ -79,7 +79,7 @@
                 <TextBlock Text="TTS Provider" VerticalAlignment="Center"/>
                 <ComboBox x:Name="ProviderCombo" Grid.Column="1" Height="24" SelectionChanged="ProviderCombo_SelectionChanged">
                     <ComboBoxItem Content="AWS Polly (Online)" Tag="AWS"/>
-                    <ComboBoxItem Content="Microsoft Edge (Online - Best Quality)" Tag="Edge"/>
+                    <ComboBoxItem Content="Microsoft Edge (UNSTABLE - DO NOT USE)" Tag="Edge"/>
                     <ComboBoxItem Content="Microsoft System Speech (Offline)" Tag="System"/>
                 </ComboBox>
             </Grid>

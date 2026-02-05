@@ -1,5 +1,5 @@
 #define MyAppName "Landing Judge"
-#define MyAppVersion "1.3.2"
+#define MyAppVersion "1.3.3"
 #define MyAppPublisher "CraigyBabyJ"
 #define MyAppURL "https://github.com/CraigyBabyJ/landing-judge"
 #define MyAppExeName "LandingJudge.exe"

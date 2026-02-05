@@ -22,11 +22,11 @@ public partial class MainWindow : Window
     
     public MainWindow()
     {
-        InitializeComponent();
-        
         _saveTimer = new DispatcherTimer();
         _saveTimer.Interval = TimeSpan.FromMilliseconds(500);
         _saveTimer.Tick += SaveTimer_Tick;
+
+        InitializeComponent();
 
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
@@ -212,8 +212,8 @@ public partial class MainWindow : Window
 
     private void TriggerSave()
     {
-        _saveTimer.Stop();
-        _saveTimer.Start();
+        _saveTimer?.Stop();
+        _saveTimer?.Start();
     }
 
     // Event Handlers referenced in XAML
@@ -276,7 +276,7 @@ public partial class MainWindow : Window
         {
             // Simple reset: delete env vars or just set known defaults
             _env?.Set("PORT", "5000");
-            _env?.Set("TTS_PROVIDER", "Edge");
+            _env?.Set("TTS_PROVIDER", "System");
             _env?.Set("ENABLE_TTS", "true");
             _env?.Set("ENABLE_DINGDONG", "true");
             _env?.Set("SHOW_EVENTS_LOG", "false");

@@ -45,7 +45,7 @@ public partial class SettingsWindow : Window
 
         PortBox.Text = _env?.Get("PORT", "5000") ?? "5000";
 
-        var provider = _env?.Get("TTS_PROVIDER", "Edge") ?? "Edge";
+        var provider = _env?.Get("TTS_PROVIDER", "System") ?? "System";
         ProviderCombo.SelectedItem = ProviderCombo.Items
             .OfType<ComboBoxItem>()
             .FirstOrDefault(i => i.Tag?.ToString() == provider) 
@@ -149,6 +149,7 @@ public partial class SettingsWindow : Window
         }
         else if (provider == "Edge")
         {
+            string suffix = " (DO NOT USE)";
             try
             {
                 // Try dynamic listing
@@ -159,7 +160,7 @@ public partial class SettingsWindow : Window
                     {
                         voiceList.Add(new VoiceViewModel 
                         { 
-                            Name = $"{v.ShortName} ({v.Gender})", 
+                            Name = $"{v.ShortName} ({v.Gender}){suffix}", 
                             Id = v.ShortName, 
                             FlagPath = GetFlagPath(v.Locale),
                             Locale = v.Locale
@@ -193,7 +194,7 @@ public partial class SettingsWindow : Window
                     var parts = v.Split('-');
                     string locale = parts.Length >= 2 ? $"{parts[0]}-{parts[1]}" : "en-US";
                     
-                    voiceList.Add(new VoiceViewModel { Name = v, Id = v, FlagPath = GetFlagPath(locale), Locale = locale });
+                    voiceList.Add(new VoiceViewModel { Name = v + suffix, Id = v, FlagPath = GetFlagPath(locale), Locale = locale });
                 }
             }
             catch (Exception ex)
@@ -273,6 +274,19 @@ public partial class SettingsWindow : Window
                  match = VoiceCombo.Items.OfType<VoiceViewModel>()
                          .FirstOrDefault(i => i.Id.Contains("Maisie", StringComparison.OrdinalIgnoreCase) 
                                            || i.Name.Contains("Maisie", StringComparison.OrdinalIgnoreCase));
+            }
+
+            // 2b. If System and no match, try Zira or David
+            if (match == null && provider == "System")
+            {
+                 match = VoiceCombo.Items.OfType<VoiceViewModel>()
+                         .FirstOrDefault(i => i.Id.Contains("Zira", StringComparison.OrdinalIgnoreCase));
+                 
+                 if (match == null)
+                 {
+                     match = VoiceCombo.Items.OfType<VoiceViewModel>()
+                             .FirstOrDefault(i => i.Id.Contains("David", StringComparison.OrdinalIgnoreCase));
+                 }
             }
 
             // 3. Fallback to first item

@@ -66,56 +66,7 @@ public class TtsService
         var provider = _env.Get("TTS_PROVIDER", "Edge");
         if (provider == "System")
         {
-            var sysVoiceId = _env.Get("POLLY_VOICE_ID"); // For System provider, this holds the voice name
-            
-            string sysKeyMaterial = $"{text}|voice={sysVoiceId}|provider=System";
-            string sysKeyHash = GetMd5Hash(sysKeyMaterial).Substring(0, 12);
-
-            if (_index.TryGetValue(sysKeyHash, out var sysEntry))
-            {
-                var path = Path.Combine(_audioDir, sysEntry.filename);
-                if (File.Exists(path))
-                {
-                    return $"/static/audio/{sysEntry.filename}";
-                }
-            }
-
-            try
-            {
-                string filename = $"quote_System_{sysVoiceId ?? "Default"}_{GetMd5Hash(text).Substring(0, 12)}.wav";
-                string filePath = Path.Combine(_audioDir, filename);
-
-                await Task.Run(() => 
-                {
-                    using var synth = new SpeechSynthesizer();
-                    if (!string.IsNullOrEmpty(sysVoiceId))
-                    {
-                        try { synth.SelectVoice(sysVoiceId); } catch { /* Fallback to default */ }
-                    }
-                    synth.SetOutputToWaveFile(filePath);
-                    synth.Speak(text);
-                });
-
-                var newEntry = new AudioIndexEntry
-                {
-                    text = text,
-                    voice = sysVoiceId ?? "Default",
-                    engine = "system",
-                    format = "wav",
-                    region = "local",
-                    filename = filename,
-                    created_ts = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                    play_count = 1
-                };
-                _index[sysKeyHash] = newEntry;
-                SaveIndex();
-
-                return $"/static/audio/{filename}";
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"System TTS failed: {ex.Message}", ex);
-            }
+            return await GenerateSystemAudioAsync(text);
         }
 
         if (provider == "Edge")
@@ -158,9 +109,10 @@ public class TtsService
 
                  return $"/static/audio/{filename}";
              }
-             catch (Exception ex)
+             catch (Exception)
              {
-                 throw new Exception($"Edge TTS failed: {ex.Message}", ex);
+                 // Fallback to System TTS if Edge fails (e.g. 403 Forbidden)
+                 return await GenerateSystemAudioAsync(text);
              }
         }
 
@@ -282,6 +234,60 @@ public class TtsService
         catch (Exception ex)
         {
             throw new Exception($"TTS Generation failed: {ex.Message}", ex);
+        }
+    }
+
+    private async Task<string> GenerateSystemAudioAsync(string text)
+    {
+        var sysVoiceId = _env.Get("POLLY_VOICE_ID"); // For System provider, this holds the voice name
+        
+        string sysKeyMaterial = $"{text}|voice={sysVoiceId}|provider=System";
+        string sysKeyHash = GetMd5Hash(sysKeyMaterial).Substring(0, 12);
+
+        if (_index.TryGetValue(sysKeyHash, out var sysEntry))
+        {
+            var path = Path.Combine(_audioDir, sysEntry.filename);
+            if (File.Exists(path))
+            {
+                return $"/static/audio/{sysEntry.filename}";
+            }
+        }
+
+        try
+        {
+            string filename = $"quote_System_{sysVoiceId ?? "Default"}_{GetMd5Hash(text).Substring(0, 12)}.wav";
+            string filePath = Path.Combine(_audioDir, filename);
+
+            await Task.Run(() => 
+            {
+                using var synth = new SpeechSynthesizer();
+                if (!string.IsNullOrEmpty(sysVoiceId))
+                {
+                    try { synth.SelectVoice(sysVoiceId); } catch { /* Fallback to default */ }
+                }
+                synth.SetOutputToWaveFile(filePath);
+                synth.Speak(text);
+            });
+
+            var newEntry = new AudioIndexEntry
+            {
+                text = text,
+                voice = sysVoiceId ?? "Default",
+                engine = "system",
+                format = "wav",
+                region = "local",
+                filename = filename,
+                created_ts = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                play_count = 1
+            };
+            _index[sysKeyHash] = newEntry;
+            SaveIndex();
+
+            return $"/static/audio/{filename}";
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"System TTS failed: {ex.Message}", ex);
         }
     }
 
