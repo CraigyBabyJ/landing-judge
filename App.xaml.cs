@@ -197,7 +197,7 @@ public partial class App : Application
                                 var effects = new
                                 {
                                     static_noise = env.GetBool("ADD_STATIC_NOISE", false),
-                                    preset = env.Get("EFFECT_PRESET", "none"),
+                                    preset = env.Get("EFFECT_PRESET", "airport_pa"),
                                     static_noise_level = env.GetDouble("STATIC_NOISE_LEVEL", 0.0),
                                     radio_noise_level = env.GetDouble("RADIO_NOISE_LEVEL", 0.0),
                                     wind_noise_level = env.GetDouble("WIND_NOISE_LEVEL", 0.0)

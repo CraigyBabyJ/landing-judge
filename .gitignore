@@ -41,6 +41,7 @@ logs/
 bin/
 obj/
 publish/
+LandingJudgeSetup.exe
 
 # Python / PyInstaller artifacts
 build/

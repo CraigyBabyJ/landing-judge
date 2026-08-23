@@ -1,5 +1,5 @@
 #define MyAppName "Landing Judge"
-#define MyAppVersion "1.3.3"
+#define MyAppVersion "1.4.0"
 #define MyAppPublisher "CraigyBabyJ"
 #define MyAppURL "https://github.com/CraigyBabyJ/landing-judge"
 #define MyAppExeName "LandingJudge.exe"
@@ -34,7 +34,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; Ensure we point to the publish directory
 Source: "publish\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Exclude dev/test leftovers: cached audio, logs, and locally-edited quotes should be generated fresh on first run
+Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "audio_cache\*,debug.log,quotes.json"
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

@@ -22,6 +22,7 @@ public partial class SettingsWindow : Window
     public SettingsWindow(EnvService? env)
     {
         InitializeComponent();
+        WindowThemeHelper.EnableDarkTitleBar(this);
         _env = env;
         LoadSettings();
     }
@@ -45,7 +46,7 @@ public partial class SettingsWindow : Window
 
         PortBox.Text = _env?.Get("PORT", "5000") ?? "5000";
 
-        var provider = _env?.Get("TTS_PROVIDER", "System") ?? "System";
+        var provider = _env?.Get("TTS_PROVIDER", "Edge") ?? "Edge";
         ProviderCombo.SelectedItem = ProviderCombo.Items
             .OfType<ComboBoxItem>()
             .FirstOrDefault(i => i.Tag?.ToString() == provider) 
@@ -64,7 +65,7 @@ public partial class SettingsWindow : Window
         KeyBox.Text = _env?.Get("AWS_ACCESS_KEY_ID", "") ?? "";
         SecretBox.Password = _env?.Get("AWS_SECRET_ACCESS_KEY", "") ?? "";
 
-        var savedVoice = _env?.Get("POLLY_VOICE_ID", "en-GB-MaisieNeural") ?? "en-GB-MaisieNeural";
+        var savedVoice = _env?.Get("POLLY_VOICE_ID", "en-GB-LibbyNeural") ?? "en-GB-LibbyNeural";
         
         // After loading voices (async), we might need to select it. 
         // Since LoadVoicesForProviderAsync is async, we might race here.
@@ -149,7 +150,6 @@ public partial class SettingsWindow : Window
         }
         else if (provider == "Edge")
         {
-            string suffix = " (DO NOT USE)";
             try
             {
                 // Try dynamic listing
@@ -158,9 +158,9 @@ public partial class SettingsWindow : Window
                 {
                     foreach (var v in voices)
                     {
-                        voiceList.Add(new VoiceViewModel 
-                        { 
-                            Name = $"{v.ShortName} ({v.Gender}){suffix}", 
+                        voiceList.Add(new VoiceViewModel
+                        {
+                            Name = $"{v.ShortName} ({v.Gender})",
                             Id = v.ShortName, 
                             FlagPath = GetFlagPath(v.Locale),
                             Locale = v.Locale
@@ -174,10 +174,13 @@ public partial class SettingsWindow : Window
             {
              try
              {
-                var commonEdgeVoices = new[] 
+                var commonEdgeVoices = new[]
                 {
+                    "en-US-AndrewMultilingualNeural", "en-US-AvaMultilingualNeural",
+                    "en-US-EmmaMultilingualNeural", "en-US-BrianMultilingualNeural",
                     "en-US-AriaNeural", "en-US-GuyNeural", "en-US-JennyNeural", "en-US-EricNeural",
-                    "en-GB-SoniaNeural", "en-GB-RyanNeural", "en-GB-LibbyNeural",
+                    "en-GB-SoniaNeural", "en-GB-RyanNeural", "en-GB-ThomasNeural",
+                    "en-GB-LibbyNeural", "en-GB-MaisieNeural",
                     "en-AU-NatashaNeural", "en-AU-WilliamNeural",
                     "fr-FR-DeniseNeural", "fr-FR-HenriNeural",
                     "de-DE-KatjaNeural", "de-DE-ConradNeural",
@@ -194,7 +197,7 @@ public partial class SettingsWindow : Window
                     var parts = v.Split('-');
                     string locale = parts.Length >= 2 ? $"{parts[0]}-{parts[1]}" : "en-US";
                     
-                    voiceList.Add(new VoiceViewModel { Name = v + suffix, Id = v, FlagPath = GetFlagPath(locale), Locale = locale });
+                    voiceList.Add(new VoiceViewModel { Name = v, Id = v, FlagPath = GetFlagPath(locale), Locale = locale });
                 }
             }
             catch (Exception ex)
@@ -268,12 +271,12 @@ public partial class SettingsWindow : Window
                 match = VoiceCombo.Items.OfType<VoiceViewModel>().FirstOrDefault(i => i.Id == savedVoice);
             }
 
-            // 2. If Edge and no match (or no saved voice), try "Maisie"
+            // 2. If Edge and no match (or no saved voice), try "Libby"
             if (match == null && provider == "Edge")
             {
                  match = VoiceCombo.Items.OfType<VoiceViewModel>()
-                         .FirstOrDefault(i => i.Id.Contains("Maisie", StringComparison.OrdinalIgnoreCase) 
-                                           || i.Name.Contains("Maisie", StringComparison.OrdinalIgnoreCase));
+                         .FirstOrDefault(i => i.Id.Contains("Libby", StringComparison.OrdinalIgnoreCase)
+                                           || i.Name.Contains("Libby", StringComparison.OrdinalIgnoreCase));
             }
 
             // 2b. If System and no match, try Zira or David

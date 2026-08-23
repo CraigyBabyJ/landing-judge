@@ -9,7 +9,6 @@ using Amazon;
 using Amazon.Polly;
 using Amazon.Polly.Model;
 using System.Speech.Synthesis;
-using EdgeTTS;
 
 namespace LandingJudge.Services;
 
@@ -71,7 +70,7 @@ public class TtsService
 
         if (provider == "Edge")
         {
-             var edgeVoiceId = _env.Get("POLLY_VOICE_ID", "en-US-AriaNeural"); // Default Edge voice
+             var edgeVoiceId = _env.Get("POLLY_VOICE_ID", "en-GB-LibbyNeural"); // Default Edge voice
             
              string edgeKeyMaterial = $"{text}|voice={edgeVoiceId}|provider=Edge";
              string edgeKeyHash = GetMd5Hash(edgeKeyMaterial).Substring(0, 12);
@@ -90,8 +89,7 @@ public class TtsService
                  string filename = $"quote_Edge_{edgeVoiceId}_{GetMd5Hash(text).Substring(0, 12)}.mp3";
                  string filePath = Path.Combine(_audioDir, filename);
 
-                var communicate = new Communicate(text, edgeVoiceId);
-                await communicate.Save(filePath);
+                await EdgeTtsClient.SynthesizeToFileAsync(text, edgeVoiceId, filePath);
 
                  var newEntry = new AudioIndexEntry
                  {
@@ -109,8 +107,9 @@ public class TtsService
 
                  return $"/static/audio/{filename}";
              }
-             catch (Exception)
+             catch (Exception ex)
              {
+                 try { File.AppendAllText(Path.Combine(_audioDir, "edge_tts_error.log"), $"[{DateTime.Now}] {ex}\n\n"); } catch { }
                  // Fallback to System TTS if Edge fails (e.g. 403 Forbidden)
                  return await GenerateSystemAudioAsync(text);
              }

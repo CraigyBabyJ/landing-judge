@@ -27,6 +27,7 @@ public partial class MainWindow : Window
         _saveTimer.Tick += SaveTimer_Tick;
 
         InitializeComponent();
+        WindowThemeHelper.EnableDarkTitleBar(this);
 
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
@@ -46,6 +47,9 @@ public partial class MainWindow : Window
             _port = _env?.GetInt("PORT", 5000) ?? 5000;
             AppendLog($"Server running on port {_port}");
         }
+
+        _port = _env?.GetInt("PORT", 5000) ?? 5000;
+        if (OverlayUrlBox != null) OverlayUrlBox.Text = $"http://localhost:{_port}/overlay";
 
         LoadSettings();
     }
@@ -92,7 +96,7 @@ public partial class MainWindow : Window
             if (EventsGroup != null) EventsGroup.Visibility = showLogs ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        var preset = _env?.Get("EFFECT_PRESET", "none") ?? "none";
+        var preset = _env?.Get("EFFECT_PRESET", "airport_pa") ?? "airport_pa";
         if (EffectsPanel != null)
         {
             foreach (var child in EffectsPanel.Children)
@@ -181,7 +185,7 @@ public partial class MainWindow : Window
         _env?.Load();
         var enableTts = _env?.GetBool("ENABLE_TTS", true) ?? true;
         var addStaticNoise = _env?.GetBool("ADD_STATIC_NOISE", false) ?? false;
-        var preset = _env?.Get("EFFECT_PRESET", "none") ?? "none";
+        var preset = _env?.Get("EFFECT_PRESET", "airport_pa") ?? "airport_pa";
         var noiseLevel = _env?.GetDouble("STATIC_NOISE_LEVEL", 0.0) ?? 0.0;
 
         var settingsPayload = new
@@ -232,6 +236,7 @@ public partial class MainWindow : Window
     private void OpenTikTok_Click(object sender, RoutedEventArgs e) => OpenUrl("https://www.tiktok.com/@craigybabyj_new");
     private void OpenDiscord_Click(object sender, RoutedEventArgs e) => OpenUrl("https://discord.craigybabyj.com");
     private void OpenWeb_Click(object sender, RoutedEventArgs e) => OpenUrl("https://craigybabyj.com"); // Placeholder
+    private void OpenBeatMyLanding_Click(object sender, System.Windows.Input.MouseButtonEventArgs e) => OpenUrl("https://beatmyland.ing");
 
     private void OpenUrl(string url)
     {
@@ -276,12 +281,14 @@ public partial class MainWindow : Window
         {
             // Simple reset: delete env vars or just set known defaults
             _env?.Set("PORT", "5000");
-            _env?.Set("TTS_PROVIDER", "System");
+            _env?.Set("TTS_PROVIDER", "Edge");
+            _env?.Set("POLLY_VOICE_ID", "en-GB-LibbyNeural");
             _env?.Set("ENABLE_TTS", "true");
             _env?.Set("ENABLE_DINGDONG", "true");
             _env?.Set("SHOW_EVENTS_LOG", "false");
-            _env?.Set("EFFECT_PRESET", "none");
-            _env?.Set("STATIC_NOISE_LEVEL", "0");
+            _env?.Set("EFFECT_PRESET", "airport_pa");
+            _env?.Set("ADD_STATIC_NOISE", "false");
+            _env?.Set("STATIC_NOISE_LEVEL", "0.01");
             LoadSettings();
             BroadcastSettings();
         }
@@ -292,14 +299,26 @@ public partial class MainWindow : Window
         OpenUrl($"http://localhost:{_port}/overlay");
     }
 
+    private void OverlayUrlBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox tb) tb.SelectAll();
+    }
+
+    private void CopyOverlayUrl_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Clipboard.SetText(OverlayUrlBox.Text);
+            if (StatusText != null) StatusText.Text = "Overlay URL copied to clipboard.";
+        }
+        catch { }
+    }
+
     private void OpenHue_Click(object sender, RoutedEventArgs e)
     {
-        // Simple hue cycle for now
-        var current = _env?.GetInt("OVERLAY_HUE_DEG", 0) ?? 0;
-        var newHue = (current + 45) % 360;
-        _env?.Set("OVERLAY_HUE_DEG", newHue.ToString());
-        _voteService?.Broadcast("theme", new { type = "theme", hue_deg = newHue });
-        AppendLog($"Hue changed to {newHue}°");
+        var colourWin = new OverlayColourWindow(_env, _voteService);
+        colourWin.Owner = this;
+        colourWin.ShowDialog();
     }
 
     private void EditQuotes_Click(object sender, RoutedEventArgs e)
@@ -372,7 +391,7 @@ public partial class MainWindow : Window
             var effects = new
             {
                 static_noise = _env?.GetBool("ADD_STATIC_NOISE", false) ?? false,
-                preset = _env?.Get("EFFECT_PRESET", "none") ?? "none",
+                preset = _env?.Get("EFFECT_PRESET", "airport_pa") ?? "airport_pa",
                 static_noise_level = _env?.GetDouble("STATIC_NOISE_LEVEL", 0.0) ?? 0.0,
                 radio_noise_level = _env?.GetDouble("RADIO_NOISE_LEVEL", 0.0) ?? 0.0,
                 wind_noise_level = _env?.GetDouble("WIND_NOISE_LEVEL", 0.0) ?? 0.0
